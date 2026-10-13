@@ -1,0 +1,16 @@
+{
+    "railSpeed": 80.0,
+    "railMinSpacing": 380.0,
+    "railCardScale": 0.5,
+    "railShowsOriginal": true,
+    "originalFadeSeconds": 0.4,
+    "cardReturnSeconds": 30.0,
+    "pickupSeconds": 0.25,
+    "rotateSeconds": 0.35,
+    "returnAnimSeconds": 0.4,
+    "flipSeconds": 0.5,
+    "glideDamping": 3.5,
+    "glideMaxSpeed": 6000.0,
+    "bandBlendWidth": 160.0,
+    "idleResetSeconds": 120.0
+}
