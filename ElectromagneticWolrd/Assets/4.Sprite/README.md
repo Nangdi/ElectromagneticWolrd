@@ -12,25 +12,31 @@
 
 | 파일 | 크기 | 내용 |
 |---|---|---|
-| `Static/Static_Spectrum.png` | 6720 x 2160 | 7개 파장 칸 배경, 칸 구분, 가시광선 무지개, 사인파, 가운데 레일 바탕 (카드와 파장 이름 라벨은 그리지 않음) |
-| `Static/Static_InfoMenu.png` | 2160 x 960 | 정보검색 메뉴 화면 배경과 제목 (메뉴 버튼 4개 자리는 비움) |
-| `Static/Static_InfoDetail01~04.png` | 2160 x 960 | 세부 정보 화면 4개 (아래쪽 [이전으로] 버튼 자리는 비움) |
+| `Static/Static_Spectrum.png` | 6720 x 2160 | 메인스크린 PSD `배경`의 왼쪽 7칸. 칸 배경, 가시광선 무지개, 사인파, 가운데 레일(y 944~1216), 파장 이름 라벨(위/아래) |
+| `Static/Static_InfoBoard.png` | 960 x 2160 | 메인스크린 PSD `배경`의 맨 오른쪽 칸. 키오스크 화면 뒤 바탕 (레일 카드가 이 밑으로 들어가 가려진다) |
+| `Static/Static_InfoMenu.png` | 2160 x 960 | 키오스크 PSD `배경-공통` + 대기화면 제목/부제 (메뉴 카드 4개 자리는 비움) |
+| `Static/Static_InfoDetail01~04.png` | 2160 x 960 | 키오스크 PSD 02~05 화면 (오른쪽 위 [HOME] 버튼 자리는 비움) |
 
 정보검색 칸(960x2160)은 90° 돌려 **가로 화면(2160x960)** 하나로 쓴다. 테이블 오른쪽 끝에 선 한 사람 기준으로 그린다.
+메인스크린 PSD의 `키요스크 위치 샘플`대로 0.963배(2081x925)로 줄여 칸 왼쪽에 붙여 놓는다.
 
 ## Parts (동적 요소 부품)
 
 | 파일 | 크기 | 비고 |
 |---|---|---|
-| `Parts/Label_<파장>.png` | 320 x 84 | 파장 이름 라벨 7개 (Radio, Microwave, Infrared, Visible, Ultraviolet, XRay, Gamma) |
-| `Parts/Button_Info01~04.png` | 900 x 200 | 정보검색 메뉴 버튼 |
-| `Parts/Button_Back.png` | 300 x 96 | [이전으로] 버튼 |
-| `Parts/NoImage_Message.png` | 460 x 130 | 이미지 없음 안내 문구 (투명 배경) |
-| `Parts/NoImage_Sub.png` | 460 x 44 | "이미지가 있는 파장대" 문구 (투명 배경) |
-| `Parts/Card_Frame.png` | 30 x 30 | 카드 테두리. **흰색**, 9-slice. 가운데는 그리지 않고(속이 빔) 사진 위에 덮인다 |
-| `Parts/Button_CardInfo.png` | 96 x 96 | 카드 오른쪽 아래 뒤집기 버튼 (앞면에서 보임: 정보 보기) |
-| `Parts/Button_CardImage.png` | 96 x 96 | 카드 오른쪽 아래 뒤집기 버튼 (뒷면에서 보임: 사진 보기) |
-| `Parts/NoImage_Bg.png` | 26 x 26 | 이미지 없음 안내 배경. **흰색**, 9-slice |
+| `Parts/Button_Info01~04.png` | 510 x 610 | 정보검색 메뉴 카드 (그림자 포함. 누르는 영역은 그림자를 뺀 부분) |
+| `Parts/Button_Back.png` | 230 x 91 | 세부 화면 [HOME] 버튼 (메뉴로 돌아감) |
+| `Parts/Card_Popup.png` | 595 x 628 | 꺼낸 카드의 회색 테두리 + 오른쪽 위 X + 제목 탭 접힘 (PSD `팝업/배경`) |
+| `Parts/Card_TitleTab.png` | 221 x 70 | 카드 왼쪽 아래 흰 제목 탭. 가로 9-slice (왼쪽 12, 오른쪽 45px)로 제목 길이만큼 늘어난다 |
+| `Parts/Card_RailShadow.png` | 269 x 293 | 레일 위 카드 그림자 (PSD `중앙레일 사진영역/그림자`) |
+| `Parts/Card_PictureMask.png` | 56 x 56 | 사진 영역을 둥글게 자르는 마스크. **흰색**, 9-slice (모서리 27px) |
+| `Parts/Rail_EndShadow.png` | 87 x 272 | 레일 오른쪽 끝(키오스크 왼쪽) 카드 위 그림자 |
+| `Parts/NoImage_Message.png` | 347 x 193 | 이미지 없음 안내 (X 아이콘 + 문구, 투명 배경. PSD `그림없을때 나오는 화면/내용`) |
+| `Parts/Button_CardInfo.png` | 88 x 88 | 카드 오른쪽 아래 뒤집기 버튼 (앞면에서 보임: 정보 보기). 디자인에 없어 임시 |
+| `Parts/Button_CardImage.png` | 88 x 88 | 카드 오른쪽 아래 뒤집기 버튼 (뒷면에서 보임: 사진 보기). 디자인에 없어 임시 |
+
+카드 크기(꺼냈을 때)는 PSD `팝업/이미지 영역`과 같은 **500 x 558**, 레일 위에서는 0.43배(216x240)로 시계방향 90° 눕혀 흐른다.
+카드 제목(탭 글자)과 이미지 없음 썸네일, 파장 이름은 실행할 때 채워진다.
 
 ## Cards (체험용 이미지) → StreamingAssets로 옮김
 

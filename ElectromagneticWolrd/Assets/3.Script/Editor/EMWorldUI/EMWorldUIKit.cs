@@ -56,25 +56,37 @@ public static class EMWorldUIKit
     // 정보검색 칸은 90° 돌려 가로 화면(2160x960)으로 쓴다. 테이블 오른쪽 끝에 선 한 사람이 탐색한다.
     public static readonly Vector2 InfoPanelSize = new Vector2(ScreenHeight, ColumnWidth);
     public const float InfoPanelAngle = 90f; // 화면 위쪽이 테이블 왼쪽(-x)을 향함 = 오른쪽 끝에 선 사람 기준으로 바로 보임
+    // 디자인(키요스크 위치 샘플)에서 키오스크 화면은 칸보다 조금 작게(2081x925) 칸 왼쪽에 붙어 있다
+    public const float InfoPanelScale = 2081f / ScreenHeight;
+    public static readonly Vector2 InfoPanelOffset = new Vector2(-21.5f, 0.5f); // InfoBoard 중앙 기준
 
     // 파장 칸 중심 x (Panel_Spectrum 중앙 기준)
     public static float BandCenterX(int index) => -SpectrumWidth * 0.5f + ColumnWidth * (index + 0.5f);
 
-    // 레일 (RailController 기본값과 맞춘다)
-    public const float RailHalfHeight = 150f;
+    // 레일 (RailController 기본값과 맞춘다). 디자인 배경의 레일 띠: y 944~1216
+    public const float RailHalfHeight = 136f;
+    // 레일 오른쪽 끝(키오스크 바로 왼쪽) 카드 위에 덮이는 그림자
+    public static readonly Vector2 RailEndShadowPos = new Vector2(6672.5f - SpectrumWidth * 0.5f, -1f); // Panel_Spectrum 중앙 기준
+    public static readonly Vector2 RailEndShadowSize = new Vector2(87, 272);
 
-    // 카드 (꺼냈을 때 크기. 레일 위에서는 EMWorldConfig.railCardScale 배)
-    public const int CardSize = 520;
-    public const int CardSpriteSize = 512;
-    public const float CardFrameInset = 6f;                                   // 사진이 테두리 안쪽으로 들어가는 폭
-    public const int CardContentSize = CardSize - (int)(CardFrameInset * 2); // 사진/뒷면 영역 (508)
-    public const float CardFrameSpriteScale = 1.4f;                           // Card_Frame(모서리 14px)을 10px 두께로 보이게
-    public static readonly Vector2 FlipButtonSize = new Vector2(96, 96);
-    public static readonly Vector2 FlipButtonPos = new Vector2(CardSize * 0.5f - 62f, -CardSize * 0.5f + 62f); // 카드 오른쪽 아래
-
-    // 파장 이름 라벨 (위쪽은 180° 돌려 위쪽 관람객을 향한다)
-    public static readonly Vector2 BandLabelSize = new Vector2(320, 84);
-    public const float BandLabelY = ScreenHeight * 0.5f - 80f;
+    // 카드 (꺼냈을 때 크기 = 디자인 팝업의 이미지 영역. 레일 위에서는 EMWorldConfig.railCardScale 배 = 216x240)
+    // 아래 좌표는 모두 사진 영역 중앙 기준이다.
+    public static readonly Vector2 CardSize = new Vector2(500, 558);
+    public const int CardSpriteSize = 512;                // 임시 카드 이미지 크기
+    public const float CardCornerRadius = 27f;
+    public static readonly Vector2 CardPopupPos = new Vector2(10.5f, 9f);   // 회색 테두리 + X 탭 (Card_Popup.png)
+    public static readonly Vector2 CardPopupSize = new Vector2(595, 628);
+    public static readonly Vector2 CloseButtonPos = new Vector2(259, 289);  // 테두리 오른쪽 위 X
+    public static readonly Vector2 CloseButtonSize = new Vector2(80, 80);
+    public const float TitleTabLeft = -293f;                                // 제목 탭 (왼쪽 아래, 글자 길이만큼 늘어남)
+    public const float TitleTabY = -219f;
+    public static readonly Vector2 TitleTabMinSize = new Vector2(221, 70);
+    public static readonly Vector2 FlipButtonSize = new Vector2(88, 88);
+    public static readonly Vector2 FlipButtonPos = new Vector2(CardSize.x * 0.5f - 60f, -CardSize.y * 0.5f + 60f); // 사진 오른쪽 아래
+    // 레일 위 카드 그림자: 디자인의 216x240 사진 기준 269x293 그림자를 카드 크기(1/0.432배)로 환산
+    private const float RailDesignScale = 240f / 558f;
+    public static readonly Vector2 RailShadowPos = new Vector2(6.5f, -5.5f) / RailDesignScale;
+    public static readonly Vector2 RailShadowSize = new Vector2(269, 293) / RailDesignScale;
 
     // 정적 레이어 패널: 이름과 크기
     public static readonly (string name, Vector2Int size)[] Panels =
@@ -93,19 +105,19 @@ public static class EMWorldUIKit
 
     #region 색
 
-    public static readonly Color BgColor = new Color32(22, 22, 25, 255);
-    public static readonly Color CardColor = new Color32(40, 42, 48, 255);
-    public static readonly Color SoftBoxColor = new Color32(255, 255, 255, 18);
-    public static readonly Color AccentColor = new Color32(72, 200, 255, 255);
+    // 디자인 PSD(06-전자기파로 보는 세상)에서 뽑은 값
+    public static readonly Color BgColor = new Color32(20, 20, 20, 255);
+    public static readonly Color CardColor = new Color32(58, 58, 58, 255);       // 팝업 테두리 위쪽 색
+    public static readonly Color SoftBoxColor = new Color32(255, 255, 255, 24);
+    public static readonly Color AccentColor = new Color32(250, 114, 85, 255);   // 키오스크 제목 주황
     public static readonly Color TextColor = Color.white;
-    public static readonly Color SubTextColor = new Color32(170, 176, 188, 255);
-    public static readonly Color DarkTextColor = new Color32(20, 22, 28, 255);
+    public static readonly Color SubTextColor = new Color32(170, 170, 170, 255);
+    public static readonly Color DarkTextColor = new Color32(51, 51, 51, 255);   // 흰 제목 탭 위 글자
 
-    public static readonly Color LabelBoxColor = new Color32(64, 66, 72, 255);
+    public static readonly Color LabelBoxColor = new Color32(46, 46, 46, 255);
     public static readonly Color ColumnLineColor = new Color32(58, 58, 64, 255);
     public static readonly Color WaveColor = new Color32(120, 120, 126, 255);
-    public static readonly Color CardFrameColor = new Color32(205, 208, 214, 255);
-    public static readonly Color NoImageBoxColor = new Color32(52, 54, 60, 255);
+    public static readonly Color NoImageBoxColor = new Color32(46, 46, 46, 255);
 
     // 정보검색 메뉴 버튼 4개 (01 전자기파란 / 02 파장과 주파수 / 03 전리‧비전리 / 04 60Hz)
     public static readonly Color[] InfoMenuColors =

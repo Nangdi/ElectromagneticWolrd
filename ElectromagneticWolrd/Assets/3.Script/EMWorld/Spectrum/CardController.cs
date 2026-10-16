@@ -7,7 +7,9 @@ using UnityEngine.UI;
 // 카드 본체. 눈에 보이지 않고(투명 Image) 터치와 위치‧회전‧크기만 담당한다.
 // 실제 그림은 파장 칸마다 하나씩 있는 CardBandView 7개가 이 본체를 그대로 따라 그리고,
 // 칸의 RectMask2D가 칸 밖을 잘라내서 경계에 걸친 카드가 파장별로 나뉘어 보인다.
-// 꺼낸 카드는 오른쪽 아래 버튼을 누르면 뒤집혀 정보면(뒷면)과 사진면(앞면)이 바뀐다.
+// 사진 아래 장식(테두리, 그림자)은 CardUnderlayView 하나가 7개 뷰 아래에,
+// 사진 위 장식(제목 탭, 뒤집기 아이콘)은 CardChromeView 하나가 7개 뷰 위에 그린다.
+// 꺼낸 카드는 오른쪽 아래 버튼을 누르면 뒤집혀 정보면(뒷면)과 사진면(앞면)이 바뀌고, 오른쪽 위 X를 누르면 레일로 돌아간다.
 // 드래그하다 놓으면 손을 뗄 때의 속도로 미끄러지다 서서히 멈춘다.
 public class CardController : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerUpHandler
 {
@@ -25,10 +27,14 @@ public class CardController : MonoBehaviour, IPointerDownHandler, IDragHandler, 
     [Tooltip("관람객 방향이 바뀌는 레일 중심선으로부터의 거리(px). 중심선 근처에서 방향이 흔들리지 않게 한다")]
     [SerializeField] private float facingHysteresis = 40f;
 
-    [Header("뒤집기 버튼 (꺼낸 카드에서만 눌림. 그림은 파장별 뷰가 그린다)")]
+    [Header("버튼 (꺼낸 카드에서만 눌림. 그림은 파장별 뷰가 그린다)")]
+    [Tooltip("사진 오른쪽 아래: 정보면 ↔ 사진면 뒤집기")]
     [SerializeField] private Button flipButton;
     [SerializeField] private CanvasGroup flipButtonGroup;
-    [Tooltip("버튼이 나타나고 사라지는 시간(초)")]
+    [Tooltip("테두리 오른쪽 위 X: 카드를 바로 레일로 돌려보냄")]
+    [SerializeField] private Button closeButton;
+    [SerializeField] private CanvasGroup closeButtonGroup;
+    [Tooltip("팝업 장식(테두리, 제목 탭, 버튼)이 나타나고 사라지는 시간(초)")]
     [SerializeField] private float buttonFadeSeconds = 0.2f;
 
     public event Action<CardController> PickedUp;
@@ -40,6 +46,8 @@ public class CardController : MonoBehaviour, IPointerDownHandler, IDragHandler, 
 
     private SpectrumBoard board;
     private readonly List<CardBandView> views = new List<CardBandView>();
+    private CardUnderlayView underlay;
+    private CardChromeView chrome;
     private int pointerId = NoPointer;
     private Vector2 grabOffset;
     private float lastTouchTime;
@@ -63,7 +71,7 @@ public class CardController : MonoBehaviour, IPointerDownHandler, IDragHandler, 
     private FlipPhase flipPhase;
     private float flipElapsed;
     private bool showingBack;
-    private float flipButtonAlpha;
+    private float popupAlpha; // 팝업 장식이 보이는 정도 (1 = 꺼낸 카드, 0 = 레일 위)
     private float originalAlpha; // 레일 위 원본 이미지가 덮이는 정도 (1 = 원본만 보임)
 
     private static EMWorldConfig Config => EMWorldConfig.Current;
@@ -71,9 +79,11 @@ public class CardController : MonoBehaviour, IPointerDownHandler, IDragHandler, 
     private void Awake()
     {
         flipButton.onClick.AddListener(Flip);
+        closeButton.onClick.AddListener(Close);
     }
 
-    public void Init(SpectrumBoard owner, CardData data, IList<CardBandView> bandViews, Texture backTexture)
+    public void Init(SpectrumBoard owner, CardData data, IList<CardBandView> bandViews, CardUnderlayView underlayView,
+        CardChromeView chromeView, Texture backTexture)
     {
         board = owner;
         Data = data;
@@ -81,6 +91,10 @@ public class CardController : MonoBehaviour, IPointerDownHandler, IDragHandler, 
         views.AddRange(bandViews);
         for (int i = 0; i < views.Count; i++)
             views[i].Set(data, (BandType)i, backTexture);
+        underlay = underlayView;
+        underlay.SetPopupAlpha(0f);
+        chrome = chromeView;
+        chrome.Set(data);
         SetWaiting();
     }
 
@@ -98,7 +112,7 @@ public class CardController : MonoBehaviour, IPointerDownHandler, IDragHandler, 
         scaleVelocity = 0f;
         flipPhase = FlipPhase.None;
         SetFace(false);
-        flipButtonAlpha = 0f;
+        popupAlpha = 0f;
         originalAlpha = Config.railShowsOriginal ? 1f : 0f;
         SetVisible(true);
     }
@@ -124,6 +138,24 @@ public class CardController : MonoBehaviour, IPointerDownHandler, IDragHandler, 
         nudgeTarget = null;
     }
 
+    // 레일 자리가 줄어 대기열로 돌아갈 때 (화면에서 바로 사라짐).
+    public void LeaveRail()
+    {
+        if (State == CardState.OnRail)
+            SetWaiting();
+    }
+
+    // X 버튼: 다른 손가락이 잡고 있어도 놓고 바로 레일로 돌려보낸다.
+    public void Close()
+    {
+        if (State != CardState.Held && State != CardState.Free) return;
+
+        pointerId = NoPointer;
+        velocity = Vector2.zero;
+        State = CardState.Free;
+        BeginReturn();
+    }
+
     private void SetWaiting()
     {
         State = CardState.Waiting;
@@ -136,6 +168,8 @@ public class CardController : MonoBehaviour, IPointerDownHandler, IDragHandler, 
         gameObject.SetActive(visible);
         foreach (CardBandView view in views)
             view.gameObject.SetActive(visible);
+        underlay.gameObject.SetActive(visible);
+        chrome.gameObject.SetActive(visible);
     }
 
     #endregion
@@ -257,6 +291,7 @@ public class CardController : MonoBehaviour, IPointerDownHandler, IDragHandler, 
         showingBack = back;
         foreach (CardBandView view in views)
             view.SetFace(back);
+        chrome.SetFace(back);
     }
 
     // 뒤집기 연출 중의 가로/세로 배율
@@ -297,17 +332,19 @@ public class CardController : MonoBehaviour, IPointerDownHandler, IDragHandler, 
         return 1f + c3 * u * u * u + c1 * u * u;
     }
 
-    // 버튼은 꺼낸 카드(잡고 있거나 놓아 둔 상태)에서만 보이고 눌린다.
-    private void UpdateFlipButton(float dt)
+    // 팝업 장식과 버튼은 꺼낸 카드(잡고 있거나 놓아 둔 상태)에서만 보이고 눌린다. 레일 위에서는 그림자만 보인다.
+    private void UpdatePopup(float dt)
     {
         bool show = State == CardState.Held || State == CardState.Free;
         float speed = 1f / Mathf.Max(0.01f, buttonFadeSeconds);
-        flipButtonAlpha = Mathf.MoveTowards(flipButtonAlpha, show ? 1f : 0f, speed * dt);
-        foreach (CardBandView view in views)
-            view.SetFlipIconAlpha(flipButtonAlpha);
-        bool usable = show && flipButtonAlpha > 0.5f;
+        popupAlpha = Mathf.MoveTowards(popupAlpha, show ? 1f : 0f, speed * dt);
+        underlay.SetPopupAlpha(popupAlpha);
+        chrome.SetPopupAlpha(popupAlpha);
+        bool usable = show && popupAlpha > 0.5f;
         flipButtonGroup.interactable = usable;
         flipButtonGroup.blocksRaycasts = usable;
+        closeButtonGroup.interactable = usable;
+        closeButtonGroup.blocksRaycasts = usable;
     }
 
     #endregion
@@ -353,13 +390,15 @@ public class CardController : MonoBehaviour, IPointerDownHandler, IDragHandler, 
                 break;
         }
 
+        if (State == CardState.OnRail)
+            targetScale = Config.railCardScale; // 설정창에서 바꾸면 레일 위 카드에 바로 반영
         if (State != CardState.Returning)
             scale = Mathf.SmoothDamp(scale, targetScale, ref scaleVelocity, SmoothTime(Config.pickupSeconds), Mathf.Infinity, dt);
         if (State != CardState.OnRail)
             angle = Mathf.SmoothDampAngle(angle, targetAngle, ref angleVelocity, SmoothTime(Config.rotateSeconds), Mathf.Infinity, dt);
 
         Vector2 flip = UpdateFlip(dt);
-        UpdateFlipButton(dt);
+        UpdatePopup(dt);
         UpdateOriginal(dt);
 
         Rect.localRotation = Quaternion.Euler(0f, 0f, angle);
@@ -373,6 +412,8 @@ public class CardController : MonoBehaviour, IPointerDownHandler, IDragHandler, 
             view.SyncTo(Rect, alpha);
             view.SetOriginalAlpha(originalAlpha);
         }
+        underlay.SyncTo(Rect, alpha);
+        chrome.SyncTo(Rect, alpha);
     }
 
     // 레일 위에서는 원본, 꺼내면 파장별 이미지로 서서히 바뀐다. 회수되는 동안은 그대로 둔다.

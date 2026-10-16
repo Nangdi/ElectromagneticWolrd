@@ -1,7 +1,7 @@
 {
     "railSpeed": 80.0,
     "railMinSpacing": 380.0,
-    "railCardScale": 0.5,
+    "railCardScale": 0.43,
     "railShowsOriginal": true,
     "originalFadeSeconds": 0.4,
     "cardReturnSeconds": 30.0,

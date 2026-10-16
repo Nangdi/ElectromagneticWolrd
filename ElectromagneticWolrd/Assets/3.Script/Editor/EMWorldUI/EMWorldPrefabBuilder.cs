@@ -16,12 +16,12 @@ using static EMWorldUIKit;
 // 구조
 //  Canvas_EMWorld.prefab (7680x2160)
 //   ├ Panel_Spectrum.prefab        왼쪽 7칸 (6720x2160)
-//   │  ├ StaticLayer               배경, 사인파, 레일 바탕 (Static_Spectrum.png)
+//   │  ├ StaticLayer               배경, 사인파, 레일 바탕, 파장 이름 라벨 (Static_Spectrum.png)
 //   │  ├ Bands/Band_xxx            파장 칸 7개 (RectMask2D). 카드의 파장별 뷰가 런타임에 들어간다
 //   │  ├ CardLayer                 카드 본체(투명, 터치 담당)가 런타임에 들어간다
-//   │  └ Labels/Label_Top_xxx …    파장 이름 (위쪽은 180° 회전)
-//   └ InfoBoard                    맨 오른쪽 1칸 (960x2160)
-//      └ Info (90° 회전, 2160x960)  Panel_InfoMenu + Panel_InfoDetail01~04. 테이블 오른쪽 끝의 한 사람용
+//   │  └ RailEndShadow             레일 오른쪽 끝 그림자 (카드 위)
+//   └ InfoBoard                    맨 오른쪽 1칸 (960x2160). StaticLayer = Static_InfoBoard.png
+//      └ Info (90° 회전, 2160x960, 0.96배)  Panel_InfoMenu + Panel_InfoDetail01~04. 테이블 오른쪽 끝의 한 사람용
 //
 // 이미 있는 프리팹은 덮어쓰지 않는다. 직접 수정한 프리팹을 지키기 위해서다.
 // 프리팹을 처음 상태로 되돌리고 싶으면 해당 .prefab 파일을 지운 뒤 다시 실행한다.
@@ -32,6 +32,8 @@ public static class EMWorldPrefabBuilder
 
     private static GameObject cardPrefab;
     private static GameObject bandViewPrefab;
+    private static GameObject underlayPrefab;
+    private static GameObject chromePrefab;
     private static GameObject thumbPrefab;
     private static GameObject backPrefab;
 
@@ -46,6 +48,8 @@ public static class EMWorldPrefabBuilder
         thumbPrefab = GetOrCreate(PartPrefabPath("NoImageThumb"), CreateNoImageThumb);
         backPrefab = GetOrCreate(PartPrefabPath("CardBack"), CreateCardBack);
         bandViewPrefab = GetOrCreate(PartPrefabPath("CardBandView"), CreateCardBandView);
+        underlayPrefab = GetOrCreate(PartPrefabPath("CardUnderlay"), CreateCardUnderlay);
+        chromePrefab = GetOrCreate(PartPrefabPath("CardChrome"), CreateCardChrome);
         cardPrefab = GetOrCreate(PartPrefabPath("Card"), CreateCard);
 
         // 패널
@@ -79,15 +83,49 @@ public static class EMWorldPrefabBuilder
         return prefab;
     }
 
-    // 정보검색 칸 정적 이미지, 메뉴 버튼, 패널 프리팹, 캔버스를 다시 만든다 (레이아웃을 바꿨을 때).
+    [MenuItem(MenuRoot + "7. 전체 프리팹 다시 만들기 (덮어쓰기)", priority = 7)]
+    private static void RebuildAllMenu()
+    {
+        bool ok = EditorUtility.DisplayDialog("전자기파로 보는 세상",
+            "카드 부품, 패널, 캔버스 프리팹을 모두 코드 기준으로 다시 만들고 씬에 적용합니다.\n프리팹을 직접 고친 내용은 사라집니다 (스프라이트 PNG는 그대로). 계속할까요?",
+            "다시 만들기", "취소");
+        if (ok) RebuildAll();
+    }
+
+    // 디자인이 바뀌어 배치가 달라졌을 때: 모든 프리팹을 같은 경로에 덮어써서(GUID 유지) 다시 만든다.
+    // 스프라이트 PNG는 없는 것만 임시로 만들고, 디자이너가 넣은 PNG는 건드리지 않는다.
+    public static void RebuildAll()
+    {
+        EMWorldSpriteExporter.Export(overwrite: false);
+        EnsureFolder(PartPrefabDir);
+        EnsureFolder(PanelPrefabDir);
+
+        thumbPrefab = GetOrCreate(PartPrefabPath("NoImageThumb"), CreateNoImageThumb, true);
+        backPrefab = GetOrCreate(PartPrefabPath("CardBack"), CreateCardBack, true);
+        bandViewPrefab = GetOrCreate(PartPrefabPath("CardBandView"), CreateCardBandView, true);
+        underlayPrefab = GetOrCreate(PartPrefabPath("CardUnderlay"), CreateCardUnderlay, true);
+        chromePrefab = GetOrCreate(PartPrefabPath("CardChrome"), CreateCardChrome, true);
+        cardPrefab = GetOrCreate(PartPrefabPath("Card"), CreateCard, true);
+
+        GameObject spectrum = GetOrCreate(PanelPrefabPath("Spectrum"), CreateSpectrumPanel, true);
+        GameObject infoMenu = GetOrCreate(PanelPrefabPath("InfoMenu"), CreateInfoMenuPanel, true);
+        var infoDetails = new List<GameObject>();
+        for (int i = 0; i < InfoDetailPanels.Length; i++)
+        {
+            int index = i;
+            infoDetails.Add(GetOrCreate(PanelPrefabPath(InfoDetailPanels[i]), () => CreateInfoDetailPanel(index), true));
+        }
+        GameObject canvasPrefab = GetOrCreate(CanvasPrefabPath, () => CreateCanvas(spectrum, infoMenu, infoDetails), true);
+
+        ApplyToScene(canvasPrefab);
+        EMWorldSpriteExporter.ExportGuides();
+        AssetDatabase.SaveAssets();
+        Debug.Log("전체 프리팹 다시 만들기 완료. 씬을 저장(Ctrl+S)하세요.");
+    }
+
+    // 정보검색 칸 패널 프리팹과 캔버스를 다시 만든다 (레이아웃을 바꿨을 때). 정적 PNG와 버튼 PNG는 디자인 파일이라 덮어쓰지 않는다.
     public static void RebuildInfoPrefabs()
     {
-        EMWorldSpriteExporter.ExportInfoStatics();
-        var buttons = new List<string>();
-        for (int i = 0; i < EMWorldStaticLayouts.InfoTitles.Length; i++)
-            buttons.Add(EMWorldStaticLayouts.InfoMenuButtonSprite(i));
-        EMWorldSpriteExporter.ExportTextParts(buttons.ToArray());
-
         GameObject infoMenu = GetOrCreate(PanelPrefabPath("InfoMenu"), CreateInfoMenuPanel, true);
         var infoDetails = new List<GameObject>();
         for (int i = 0; i < InfoDetailPanels.Length; i++)
@@ -108,7 +146,7 @@ public static class EMWorldPrefabBuilder
     private static void RebuildCardPrefabsMenu()
     {
         bool ok = EditorUtility.DisplayDialog("전자기파로 보는 세상",
-            "Parts/Card, CardBandView, CardBack, NoImageThumb 프리팹을 코드 기준으로 다시 만듭니다.\n직접 고친 내용은 사라집니다. 계속할까요?",
+            "Parts/Card, CardBandView, CardUnderlay, CardChrome, CardBack, NoImageThumb 프리팹을 코드 기준으로 다시 만듭니다.\n직접 고친 내용은 사라집니다. 계속할까요?",
             "다시 만들기", "취소");
         if (ok) RebuildCardPrefabs();
     }
@@ -120,6 +158,8 @@ public static class EMWorldPrefabBuilder
         thumbPrefab = GetOrCreate(PartPrefabPath("NoImageThumb"), CreateNoImageThumb, true);
         backPrefab = GetOrCreate(PartPrefabPath("CardBack"), CreateCardBack, true);
         bandViewPrefab = GetOrCreate(PartPrefabPath("CardBandView"), CreateCardBandView, true);
+        underlayPrefab = GetOrCreate(PartPrefabPath("CardUnderlay"), CreateCardUnderlay, true);
+        chromePrefab = GetOrCreate(PartPrefabPath("CardChrome"), CreateCardChrome, true);
         cardPrefab = GetOrCreate(PartPrefabPath("Card"), CreateCard, true);
 
         string panelPath = PanelPrefabPath("Spectrum");
@@ -132,6 +172,8 @@ public static class EMWorldPrefabBuilder
             Wire(contents.GetComponent<SpectrumBoard>(),
                 ("cardPrefab", cardPrefab.GetComponent<CardController>()),
                 ("bandViewPrefab", bandViewPrefab.GetComponent<CardBandView>()),
+                ("underlayPrefab", underlayPrefab.GetComponent<CardUnderlayView>()),
+                ("chromePrefab", chromePrefab.GetComponent<CardChromeView>()),
                 ("backBaker", baker));
             PrefabUtility.SaveAsPrefabAsset(contents, panelPath);
         }
@@ -172,40 +214,82 @@ public static class EMWorldPrefabBuilder
 
     #region 부품 프리팹
 
-    // 이미지 없음 안내 안의 썸네일: Picture / Label
+    // 둥근 사진 영역: 마스크(Card_PictureMask) 안에서 사진이 비율을 유지한 채 영역을 가득 채운다.
+    // radiusScale은 마스크 모서리 둥글기 배율 (썸네일처럼 작은 영역은 작게).
+    private static RectTransform AddPictureMask(RectTransform rt, float radiusScale = 1f)
+    {
+        Image mask = AddSprite(rt, Part("Card_PictureMask"));
+        mask.pixelsPerUnitMultiplier = 1f / radiusScale;
+        rt.gameObject.AddComponent<Mask>().showMaskGraphic = false;
+        return rt;
+    }
+
+    private static (Image image, AspectRatioFitter fitter) CreateCoverPicture(RectTransform parent, string name)
+    {
+        RectTransform rt = StretchFull(CreateRect(name, parent));
+        Image image = AddImage(rt, Color.white);
+        var fitter = rt.gameObject.AddComponent<AspectRatioFitter>();
+        fitter.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
+        fitter.aspectRatio = 1f;
+        return (image, fitter);
+    }
+
+    private static CanvasGroup AddGroup(RectTransform rt, float alpha = 1f)
+    {
+        var group = rt.gameObject.AddComponent<CanvasGroup>();
+        group.alpha = alpha;
+        group.blocksRaycasts = false;
+        group.interactable = false;
+        return group;
+    }
+
+    // 이미지 없음 안내 안의 썸네일: PictureArea(둥근 마스크, 위쪽) / Label(아래쪽). 크기는 NoImageView가 정한다.
     private static GameObject CreateNoImageThumb()
     {
         RectTransform root = CreateRect("NoImageThumb", null);
-        root.sizeDelta = new Vector2(104, 150);
+        root.sizeDelta = new Vector2(124, 138 + 36);
 
-        Image picture = AddImage(Place(CreateRect("Picture", root), new Vector2(0, 22), new Vector2(104, 104)), Color.white);
-        picture.preserveAspect = true;
-        TMP_Text label = CreateText(root, "Label", "적외선", new Vector2(0, -52), new Vector2(124, 40), 24, SubTextColor);
+        RectTransform area = CreateRect("PictureArea", root);
+        area.anchorMin = new Vector2(0, 1);
+        area.anchorMax = Vector2.one;
+        area.pivot = new Vector2(0.5f, 1f);
+        area.anchoredPosition = Vector2.zero;
+        area.sizeDelta = new Vector2(0, 138);
+        AddPictureMask(area, 0.3f);
+        var (picture, fitter) = CreateCoverPicture(area, "Picture");
+
+        RectTransform labelRect = CreateRect("Label", root);
+        labelRect.anchorMin = Vector2.zero;
+        labelRect.anchorMax = new Vector2(1, 0);
+        labelRect.pivot = new Vector2(0.5f, 0f);
+        labelRect.anchoredPosition = Vector2.zero;
+        labelRect.sizeDelta = new Vector2(20, 30);
+        TMP_Text label = AddText(labelRect, "적외선", 20, TextColor);
         label.enableWordWrapping = false;
         label.overflowMode = TextOverflowModes.Overflow;
 
         var view = root.gameObject.AddComponent<NoImageThumbView>();
-        Wire(view, ("picture", picture), ("label", label));
+        Wire(view, ("pictureArea", area), ("picture", picture), ("pictureFitter", fitter), ("label", label));
         return root.gameObject;
     }
 
     // 카드 뒷면(정보면) 원본. 실행 시 CardBackBaker가 카드마다 텍스처 한 장으로 구워 파장별 뷰에 넣는다.
+    // 사진 영역과 같은 크기라 같은 둥근 마스크로 잘린다. 왼쪽 아래는 제목 탭, 오른쪽 아래는 뒤집기 버튼 자리라 비워 둔다.
     private static GameObject CreateCardBack()
     {
-        RectTransform root = Place(CreateRect("CardBack", null), Vector2.zero, new Vector2(CardContentSize, CardContentSize));
+        RectTransform root = Place(CreateRect("CardBack", null), Vector2.zero, CardSize);
         AddImage(StretchFull(CreateRect("Background", root)), CardColor);
 
-        TMP_Text category = CreateText(root, "Category", "천체", new Vector2(0, 196), new Vector2(440, 44), 28, AccentColor, true);
-        TMP_Text title = CreateText(root, "Title", "게 성운", new Vector2(0, 140), new Vector2(440, 70), 44, TextColor, true);
+        TMP_Text category = CreateText(root, "Category", "천체", new Vector2(0, 220), new Vector2(420, 44), 28, AccentColor, true);
+        TMP_Text title = CreateText(root, "Title", "게 성운", new Vector2(0, 165), new Vector2(420, 70), 44, TextColor, true);
         title.enableAutoSizing = true;
         title.fontSizeMin = 30;
         title.fontSizeMax = 44;
-        AddImage(Place(CreateRect("Divider", root), new Vector2(0, 96), new Vector2(440, 2)), SoftBoxColor);
+        AddImage(Place(CreateRect("Divider", root), new Vector2(0, 120), new Vector2(420, 2)), SoftBoxColor);
 
-        // 오른쪽 아래는 뒤집기 버튼 자리라 비워 둔다
         TMP_Text description = CreateText(root, "Description",
             "1054년에 폭발한 초신성의 잔해입니다. 중심의 펄서가 라디오파부터 감마선까지 강한 전자기파를 냅니다.",
-            new Vector2(-14, -40), new Vector2(412, 240), 30, TextColor, false, TextAlignmentOptions.TopLeft);
+            new Vector2(0, -30), new Vector2(420, 270), 30, TextColor, false, TextAlignmentOptions.TopLeft);
         description.enableAutoSizing = true;
         description.fontSizeMin = 22;
         description.fontSizeMax = 30;
@@ -215,100 +299,161 @@ public static class EMWorldPrefabBuilder
         return root.gameObject;
     }
 
-    // 카드의 파장별 뷰: Front(사진 또는 이미지 없음 안내) / Back(구운 뒷면) / Frame(속이 빈 테두리) / FlipIcon
+    // 카드의 파장별 뷰 (크기 = 사진 영역 500x558): PictureMask(앞면 사진·이미지 없음 안내, 원본, 뒷면)
     private static GameObject CreateCardBandView()
     {
         RectTransform root = CreateRect("CardBandView", null);
-        root.sizeDelta = new Vector2(CardSize, CardSize);
-        var group = root.gameObject.AddComponent<CanvasGroup>();
-        group.blocksRaycasts = false;
-        group.interactable = false;
+        root.sizeDelta = CardSize;
+        CanvasGroup group = AddGroup(root);
 
-        RectTransform front = StretchFull(CreateRect("Front", root));
-        Image picture = AddImage(Stretch(CreateRect("Picture", front), Vector2.zero, Vector2.one, CardFrameInset), Color.white);
-        picture.preserveAspect = true;
+        RectTransform mask = AddPictureMask(StretchFull(CreateRect("PictureMask", root)));
 
-        RectTransform noImage = Stretch(CreateRect("NoImage", front), Vector2.zero, Vector2.one, CardFrameInset);
+        RectTransform front = StretchFull(CreateRect("Front", mask));
+        var (picture, pictureFitter) = CreateCoverPicture(front, "Picture");
+
+        RectTransform noImage = StretchFull(CreateRect("NoImage", front));
         AddImage(StretchFull(CreateRect("Background", noImage)), NoImageBoxColor);
-        AddSprite(Place(CreateRect("Message", noImage), new Vector2(0, 130), new Vector2(460, 130)), Part("NoImage_Message"))
-            .preserveAspect = true;
-        AddSprite(Place(CreateRect("Sub", noImage), new Vector2(0, 40), new Vector2(460, 44)), Part("NoImage_Sub"))
+        AddSprite(Place(CreateRect("Message", noImage), new Vector2(1.5f, 142.5f), new Vector2(347, 193)), Part("NoImage_Message"))
             .preserveAspect = true;
 
-        RectTransform thumbRoot = Place(CreateRect("ThumbRoot", noImage), new Vector2(0, -110), new Vector2(470, 170));
+        // 썸네일 줄: 위쪽 끝을 사진 영역 중앙에서 8px 위에 맞춘다 (디자인 y 1671~1677)
+        RectTransform thumbRoot = CreateRect("ThumbRoot", noImage);
+        thumbRoot.anchorMin = thumbRoot.anchorMax = new Vector2(0.5f, 0.5f);
+        thumbRoot.pivot = new Vector2(0.5f, 1f);
+        thumbRoot.anchoredPosition = new Vector2(0, 8);
+        thumbRoot.sizeDelta = new Vector2(460, 180);
         var layout = thumbRoot.gameObject.AddComponent<HorizontalLayoutGroup>();
-        layout.spacing = 12;
-        layout.childAlignment = TextAnchor.MiddleCenter;
+        layout.spacing = 22;
+        layout.childAlignment = TextAnchor.UpperCenter;
         layout.childControlWidth = false;
         layout.childControlHeight = false;
         layout.childForceExpandWidth = false;
         layout.childForceExpandHeight = false;
 
         var noImageView = noImage.gameObject.AddComponent<NoImageView>();
-        Wire(noImageView, ("thumbPrefab", thumbPrefab.GetComponent<NoImageThumbView>()), ("thumbRoot", thumbRoot));
+        Wire(noImageView, ("thumbPrefab", thumbPrefab.GetComponent<NoImageThumbView>()), ("thumbRoot", thumbRoot),
+            ("layout", layout));
         noImage.gameObject.SetActive(false);
 
         // 레일 위에서 덮이는 원본 이미지
-        RectTransform original = Stretch(CreateRect("Original", root), Vector2.zero, Vector2.one, CardFrameInset);
-        var originalGroup = original.gameObject.AddComponent<CanvasGroup>();
-        originalGroup.blocksRaycasts = false;
-        Image originalPicture = AddImage(original, Color.white);
-        originalPicture.preserveAspect = true;
+        RectTransform original = StretchFull(CreateRect("Original", mask));
+        CanvasGroup originalGroup = AddGroup(original);
+        var (originalPicture, originalFitter) = CreateCoverPicture(original, "Picture");
 
-        RectTransform backRect = Stretch(CreateRect("Back", root), Vector2.zero, Vector2.one, CardFrameInset);
+        RectTransform backRect = StretchFull(CreateRect("Back", mask));
         var back = backRect.gameObject.AddComponent<RawImage>();
         back.raycastTarget = false;
         backRect.gameObject.SetActive(false);
-
-        // 속이 빈 테두리. 사진 위에 그려서 사진 모서리를 덮는다.
-        Image frame = AddSprite(StretchFull(CreateRect("Frame", root)), Part("Card_Frame"), CardFrameColor);
-        frame.fillCenter = false;
-        frame.pixelsPerUnitMultiplier = CardFrameSpriteScale;
-
-        RectTransform flipIcon = Place(CreateRect("FlipIcon", root), FlipButtonPos, FlipButtonSize);
-        var flipIconGroup = flipIcon.gameObject.AddComponent<CanvasGroup>();
-        flipIconGroup.alpha = 0f;
-        flipIconGroup.blocksRaycasts = false;
-        RectTransform infoIcon = StretchFull(CreateRect("Icon_Info", flipIcon));
-        AddSprite(infoIcon, Part("Button_CardInfo")).preserveAspect = true;
-        RectTransform imageIcon = StretchFull(CreateRect("Icon_Image", flipIcon));
-        AddSprite(imageIcon, Part("Button_CardImage")).preserveAspect = true;
-        imageIcon.gameObject.SetActive(false);
 
         var view = root.gameObject.AddComponent<CardBandView>();
         Wire(view,
             ("group", group),
             ("front", front.gameObject),
             ("picture", picture),
+            ("pictureFitter", pictureFitter),
             ("noImage", noImageView),
             ("original", originalGroup),
             ("originalPicture", originalPicture),
-            ("back", back),
+            ("originalFitter", originalFitter),
+            ("back", back));
+        return root.gameObject;
+    }
+
+    // 사진 아래 장식 (카드마다 하나, 그 카드의 파장별 뷰 7개 아래에 그림): RailShadow(레일 위에서만) / PopupFrame(꺼냈을 때만)
+    private static GameObject CreateCardUnderlay()
+    {
+        RectTransform root = CreateRect("CardUnderlay", null);
+        root.sizeDelta = CardSize;
+        CanvasGroup group = AddGroup(root);
+
+        RectTransform railShadow = Place(CreateRect("RailShadow", root), RailShadowPos, RailShadowSize);
+        AddSprite(railShadow, Part("Card_RailShadow"));
+        CanvasGroup railShadowGroup = AddGroup(railShadow);
+
+        RectTransform popup = Place(CreateRect("PopupFrame", root), CardPopupPos, CardPopupSize);
+        AddSprite(popup, Part("Card_Popup"));
+        CanvasGroup popupGroup = AddGroup(popup, 0f);
+
+        var view = root.gameObject.AddComponent<CardUnderlayView>();
+        Wire(view, ("group", group), ("popupFrame", popupGroup), ("railShadow", railShadowGroup));
+        return root.gameObject;
+    }
+
+    // 사진 위 장식 (카드마다 하나, 그 카드의 파장별 뷰 7개 위에 그림): TitleTab / FlipIcon
+    private static GameObject CreateCardChrome()
+    {
+        RectTransform root = CreateRect("CardChrome", null);
+        root.sizeDelta = CardSize;
+        CanvasGroup group = AddGroup(root);
+
+        // 제목 탭: 왼쪽 끝을 고정하고 글자 길이만큼 오른쪽으로 늘어난다 (Card_TitleTab은 가로 9-slice)
+        RectTransform tab = CreateRect("TitleTab", root);
+        tab.anchorMin = tab.anchorMax = new Vector2(0.5f, 0.5f);
+        tab.pivot = new Vector2(0f, 0.5f);
+        tab.anchoredPosition = new Vector2(TitleTabLeft, TitleTabY);
+        tab.sizeDelta = TitleTabMinSize;
+        AddSprite(tab, Part("Card_TitleTab"));
+        CanvasGroup tabGroup = AddGroup(tab, 0f);
+        var tabLayout = tab.gameObject.AddComponent<HorizontalLayoutGroup>();
+        tabLayout.padding = new RectOffset(52, 60, 0, 6); // 아래 6px는 탭 그림자
+        tabLayout.childAlignment = TextAnchor.MiddleLeft;
+        tabLayout.childControlWidth = true;
+        tabLayout.childControlHeight = true;
+        tabLayout.childForceExpandWidth = false;
+        tabLayout.childForceExpandHeight = true;
+        var tabFitter = tab.gameObject.AddComponent<ContentSizeFitter>();
+        tabFitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+        tab.gameObject.AddComponent<LayoutElement>().minWidth = TitleTabMinSize.x;
+        TMP_Text title = AddText(CreateRect("Title", tab), "스마트폰", 30, DarkTextColor, false, TextAlignmentOptions.MidlineLeft);
+        title.enableWordWrapping = false;
+        title.overflowMode = TextOverflowModes.Overflow;
+
+        RectTransform flipIcon = Place(CreateRect("FlipIcon", root), FlipButtonPos, FlipButtonSize);
+        CanvasGroup flipIconGroup = AddGroup(flipIcon, 0f);
+        RectTransform infoIcon = StretchFull(CreateRect("Icon_Info", flipIcon));
+        AddSprite(infoIcon, Part("Button_CardInfo")).preserveAspect = true;
+        RectTransform imageIcon = StretchFull(CreateRect("Icon_Image", flipIcon));
+        AddSprite(imageIcon, Part("Button_CardImage")).preserveAspect = true;
+        imageIcon.gameObject.SetActive(false);
+
+        var view = root.gameObject.AddComponent<CardChromeView>();
+        Wire(view,
+            ("group", group),
+            ("titleTab", tabGroup),
+            ("titleText", title),
             ("flipIcon", flipIconGroup),
             ("infoIcon", infoIcon.gameObject),
             ("imageIcon", imageIcon.gameObject));
         return root.gameObject;
     }
 
-    // 카드 본체: 투명 Image(터치 영역) + 오른쪽 아래 투명 뒤집기 버튼 + CardController. 그림은 CardBandView들이 그린다.
+    // 카드 위의 투명 버튼 (그림은 CardBandView가 그린다). 꺼낸 카드에서만 눌리도록 CanvasGroup으로 막아 둔다.
+    private static (Button button, CanvasGroup group) CreateHitButton(RectTransform parent, string name, Vector2 pos, Vector2 size)
+    {
+        RectTransform rt = Place(CreateRect(name, parent), pos, size);
+        CanvasGroup group = AddGroup(rt);
+        Image hit = AddImage(rt, new Color(1f, 1f, 1f, 0f));
+        hit.raycastTarget = true;
+        var button = rt.gameObject.AddComponent<Button>();
+        button.targetGraphic = hit;
+        button.transition = Selectable.Transition.None;
+        return (button, group);
+    }
+
+    // 카드 본체: 투명 Image(터치 영역) + 투명 뒤집기/닫기 버튼 + CardController. 그림은 CardBandView들이 그린다.
     private static GameObject CreateCard()
     {
-        RectTransform root = Place(CreateRect("Card", null), Vector2.zero, new Vector2(CardSize, CardSize));
+        RectTransform root = Place(CreateRect("Card", null), Vector2.zero, CardSize);
         Image hit = AddImage(root, new Color(1f, 1f, 1f, 0f));
         hit.raycastTarget = true;
 
-        RectTransform button = Place(CreateRect("FlipButton", root), FlipButtonPos, FlipButtonSize);
-        var buttonGroup = button.gameObject.AddComponent<CanvasGroup>();
-        buttonGroup.blocksRaycasts = false;
-        buttonGroup.interactable = false;
-        Image buttonHit = AddImage(button, new Color(1f, 1f, 1f, 0f));
-        buttonHit.raycastTarget = true;
-        var flipButton = button.gameObject.AddComponent<Button>();
-        flipButton.targetGraphic = buttonHit;
-        flipButton.transition = Selectable.Transition.None;
+        var (flipButton, flipGroup) = CreateHitButton(root, "FlipButton", FlipButtonPos, FlipButtonSize);
+        var (closeButton, closeGroup) = CreateHitButton(root, "CloseButton", CloseButtonPos, CloseButtonSize);
 
         var controller = root.gameObject.AddComponent<CardController>();
-        Wire(controller, ("flipButton", flipButton), ("flipButtonGroup", buttonGroup));
+        Wire(controller,
+            ("flipButton", flipButton), ("flipButtonGroup", flipGroup),
+            ("closeButton", closeButton), ("closeButtonGroup", closeGroup));
         return root.gameObject;
     }
 
@@ -341,20 +486,9 @@ public static class EMWorldPrefabBuilder
 
         RectTransform cardLayer = StretchFull(CreateRect("CardLayer", panel));
 
-        // 파장 이름: 아래쪽 관람객용(0°)과 위쪽 관람객용(180°)
-        RectTransform labels = StretchFull(CreateRect("Labels", panel));
-        for (int i = 0; i < BandInfo.Count; i++)
-        {
-            Sprite sprite = Part(EMWorldStaticLayouts.BandLabelSprite((BandType)i));
-            RectTransform bottom = Place(CreateRect($"Label_Bottom_{(BandType)i}", labels),
-                new Vector2(BandCenterX(i), -BandLabelY), BandLabelSize);
-            AddSprite(bottom, sprite).preserveAspect = true;
-
-            RectTransform top = Place(CreateRect($"Label_Top_{(BandType)i}", labels),
-                new Vector2(BandCenterX(i), BandLabelY), BandLabelSize);
-            top.localRotation = Quaternion.Euler(0, 0, 180);
-            AddSprite(top, sprite).preserveAspect = true;
-        }
+        // 파장 이름 라벨은 디자인 배경(StaticLayer)에 그려져 있다.
+        // 레일 오른쪽 끝 그림자: 카드가 키오스크 밑으로 들어가는 곳. 카드 위에 덮인다.
+        AddSprite(Place(CreateRect("RailEndShadow", panel), RailEndShadowPos, RailEndShadowSize), Part("Rail_EndShadow"));
 
         var rail = panel.gameObject.AddComponent<RailController>();
         var baker = panel.gameObject.AddComponent<CardBackBaker>();
@@ -363,6 +497,8 @@ public static class EMWorldPrefabBuilder
         Wire(board,
             ("cardPrefab", cardPrefab.GetComponent<CardController>()),
             ("bandViewPrefab", bandViewPrefab.GetComponent<CardBandView>()),
+            ("underlayPrefab", underlayPrefab.GetComponent<CardUnderlayView>()),
+            ("chromePrefab", chromePrefab.GetComponent<CardChromeView>()),
             ("rail", rail),
             ("backBaker", baker),
             ("cardLayer", cardLayer));
@@ -378,8 +514,10 @@ public static class EMWorldPrefabBuilder
         var buttons = new UnityEngine.Object[EMWorldStaticLayouts.InfoTitles.Length];
         for (int i = 0; i < buttons.Length; i++)
         {
-            buttons[i] = CreateSpriteButton(panel, $"Menu_{i + 1:00}", EMWorldStaticLayouts.InfoMenuButtonSprite(i),
+            Button button = CreateSpriteButton(panel, $"Menu_{i + 1:00}", EMWorldStaticLayouts.InfoMenuButtonSprite(i),
                 EMWorldStaticLayouts.InfoMenuButtonPos[i], EMWorldStaticLayouts.InfoMenuButtonSize);
+            ((Image)button.targetGraphic).raycastPadding = EMWorldStaticLayouts.InfoMenuButtonRaycastPadding;
+            buttons[i] = button;
         }
 
         var view = panel.gameObject.AddComponent<InfoMenuPanel>();
@@ -423,16 +561,19 @@ public static class EMWorldPrefabBuilder
 
         PrefabUtility.InstantiatePrefab(spectrum, go.transform);
 
+        // 정보검색 칸 바탕(배경 디자인의 오른쪽 칸). 레일 카드가 이 밑으로 지나가며 가려진다.
         RectTransform infoBoard = Place(CreateRect("InfoBoard", go.transform), InfoColumnCenter, new Vector2(ColumnWidth, ScreenHeight));
+        AddStaticLayer(infoBoard, "InfoBoard");
         CreateInfo(infoBoard, infoMenu, infoDetails);
         return go;
     }
 
-    // 정보검색 칸: 960x2160 칸을 90° 돌려 2160x960 가로 화면 하나로 쓴다.
+    // 정보검색 칸: 960x2160 칸을 90° 돌려 2160x960 가로 화면 하나로 쓴다. 디자인대로 칸보다 조금 작게 왼쪽에 붙인다.
     private static void CreateInfo(RectTransform parent, GameObject infoMenu, List<GameObject> infoDetails)
     {
-        RectTransform half = Place(CreateRect("Info", parent), Vector2.zero, InfoPanelSize);
+        RectTransform half = Place(CreateRect("Info", parent), InfoPanelOffset, InfoPanelSize);
         half.localRotation = Quaternion.Euler(0, 0, InfoPanelAngle);
+        half.localScale = new Vector3(InfoPanelScale, InfoPanelScale, 1f);
 
         var menu = (GameObject)PrefabUtility.InstantiatePrefab(infoMenu, half);
         var details = new UnityEngine.Object[infoDetails.Count];

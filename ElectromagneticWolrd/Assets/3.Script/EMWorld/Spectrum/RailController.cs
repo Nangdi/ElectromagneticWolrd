@@ -9,14 +9,15 @@ public class RailController : MonoBehaviour
     [Tooltip("레일 중심선 y (CardLayer 기준, px)")]
     [SerializeField] private float railY;
     [Tooltip("레일 영역의 절반 높이(px). 놓은 카드가 이 영역에 걸치면 밖으로 밀어낸다")]
-    [SerializeField] private float halfHeight = 150f;
+    [SerializeField] private float halfHeight = 136f;
     [Tooltip("카드가 화면 밖에서 돌아 들어오는 여유 거리(px). 레일 카드 대각선의 절반보다 커야 한다")]
     [SerializeField] private float edgeMargin = 220f;
+    [Tooltip("레일 위 카드 각도(도). 디자인: 시계방향 90° 눕혀 흐름 방향을 향하게 해서 양쪽 관람객 모두 같은 조건으로 본다")]
+    [SerializeField] private float cardAngle = -90f;
 
     private class Slot
     {
         public CardController card;
-        public float angle; // 한 줄 레일이라 양쪽 관람객이 모두 보도록 0°/180°를 번갈아 둔다
     }
 
     private readonly List<Slot> slots = new List<Slot>();
@@ -24,30 +25,24 @@ public class RailController : MonoBehaviour
     private float spacing;
     private float startX;
     private float offset;
+    private float areaWidth;
+    private int cardCount;
 
     public float RailY => railY;
     public float HalfHeight => halfHeight;
 
     private static EMWorldConfig Config => EMWorldConfig.Current;
 
-    public void Setup(IList<CardController> cards, float areaWidth)
+    public void Setup(IList<CardController> cards, float width)
     {
-        slots.Clear();
         waiting.Clear();
-        offset = 0f;
-
-        float totalLength = areaWidth + edgeMargin * 2f;
-        int maxSlots = Mathf.FloorToInt(totalLength / Mathf.Max(1f, Config.railMinSpacing));
-        int count = Mathf.Clamp(maxSlots, 1, Mathf.Max(1, cards.Count));
-        spacing = totalLength / count;
-        startX = -areaWidth * 0.5f - edgeMargin;
-
-        for (int i = 0; i < count; i++)
-            slots.Add(new Slot { angle = i % 2 == 0 ? 0f : 180f });
+        areaWidth = width;
+        cardCount = cards.Count;
+        BuildSlots();
 
         for (int i = 0; i < cards.Count; i++)
         {
-            if (i < count)
+            if (i < slots.Count)
             {
                 slots[i].card = cards[i];
                 cards[i].EnterRail();
@@ -55,6 +50,58 @@ public class RailController : MonoBehaviour
             else
             {
                 waiting.Enqueue(cards[i]);
+            }
+        }
+        UpdatePoses();
+    }
+
+    private void OnEnable()
+    {
+        EMWorldConfig.Changed += OnConfigChanged;
+    }
+
+    private void OnDisable()
+    {
+        EMWorldConfig.Changed -= OnConfigChanged;
+    }
+
+    // 같은 간격의 슬롯을 레일 길이(화면 밖 여유 포함)에 맞춰 만든다. 카드 수보다 많이 만들지 않는다.
+    private void BuildSlots()
+    {
+        slots.Clear();
+        offset = 0f;
+
+        float totalLength = areaWidth + edgeMargin * 2f;
+        int maxSlots = Mathf.FloorToInt(totalLength / Mathf.Max(1f, Config.railMinSpacing));
+        int count = Mathf.Clamp(maxSlots, 1, Mathf.Max(1, cardCount));
+        spacing = totalLength / count;
+        startX = -areaWidth * 0.5f - edgeMargin;
+
+        for (int i = 0; i < count; i++)
+            slots.Add(new Slot());
+    }
+
+    // 설정창에서 카드 간격을 바꾸면 레일 위 카드를 새 슬롯에 다시 놓는다. 자리가 모자라면 남는 카드는 대기열로 보낸다.
+    private void OnConfigChanged(string field)
+    {
+        if (field != nameof(EMWorldConfig.railMinSpacing) || slots.Count == 0) return;
+
+        var onRail = new List<CardController>();
+        foreach (Slot slot in slots)
+            if (slot.card != null)
+                onRail.Add(slot.card);
+
+        BuildSlots();
+        for (int i = 0; i < onRail.Count; i++)
+        {
+            if (i < slots.Count)
+            {
+                slots[i].card = onRail[i];
+            }
+            else
+            {
+                onRail[i].LeaveRail();
+                waiting.Enqueue(onRail[i]);
             }
         }
         UpdatePoses();
@@ -102,7 +149,7 @@ public class RailController : MonoBehaviour
         {
             CardController card = slots[i].card;
             if (card != null)
-                card.SetRailPose(new Vector2(startX + i * spacing + offset, railY), slots[i].angle);
+                card.SetRailPose(new Vector2(startX + i * spacing + offset, railY), cardAngle);
         }
     }
 }

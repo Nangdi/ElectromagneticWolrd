@@ -20,15 +20,17 @@ public static class EMWorldStaticLayouts
         { "InfoDetail04", root => InfoDetail(root, 3) },
     };
 
-    // 메뉴 버튼 자리 (PrefabBuilder와 같이 쓴다)
-    public static readonly Vector2 InfoMenuButtonSize = new Vector2(900, 200);
-    public static readonly Vector2[] InfoMenuButtonPos = // 2x2 배치
+    // 메뉴 버튼 자리 (PrefabBuilder와 같이 쓴다). 디자인: 그림자 포함 510x610 카드 4장을 가로로 배치
+    public static readonly Vector2 InfoMenuButtonSize = new Vector2(510, 610);
+    public static readonly Vector2[] InfoMenuButtonPos =
     {
-        new Vector2(-470, 90), new Vector2(470, 90),
-        new Vector2(-470, -170), new Vector2(470, -170),
+        new Vector2(-743, -101), new Vector2(-243, -100), new Vector2(257, -101), new Vector2(757, -101),
     };
-    public static readonly Vector2 BackButtonPos = new Vector2(0, -385);
-    public static readonly Vector2 BackButtonSize = new Vector2(300, 96);
+    // 그림자는 누르는 영역에서 뺀다 (left, bottom, right, top)
+    public static readonly Vector4 InfoMenuButtonRaycastPadding = new Vector4(9, 25, 21, 5);
+    // 세부 화면 오른쪽 위 [HOME] 버튼 (메뉴로 돌아감)
+    public static readonly Vector2 BackButtonPos = new Vector2(914, 378.5f);
+    public static readonly Vector2 BackButtonSize = new Vector2(230, 91);
 
     public static readonly string[] InfoTitles =
     {
@@ -160,22 +162,11 @@ public static class EMWorldStaticLayouts
 
     public static readonly List<(string name, Vector2Int size, Action<RectTransform> draw)> TextParts = BuildTextParts();
 
-    public static string BandLabelSprite(BandType band) => $"Label_{band}";
     public static string InfoMenuButtonSprite(int index) => $"Button_Info{index + 1:00}";
 
     private static List<(string, Vector2Int, Action<RectTransform>)> BuildTextParts()
     {
         var parts = new List<(string, Vector2Int, Action<RectTransform>)>();
-
-        for (int i = 0; i < BandInfo.Count; i++)
-        {
-            string text = BandInfo.DisplayName((BandType)i);
-            parts.Add((BandLabelSprite((BandType)i), Vector2Int.RoundToInt(BandLabelSize), root =>
-            {
-                AddRoundBox(root, LabelBoxColor);
-                FillText(root, "Text", text, 44, TextColor, true);
-            }));
-        }
 
         for (int i = 0; i < InfoTitles.Length; i++)
         {
@@ -185,8 +176,8 @@ public static class EMWorldStaticLayouts
 
         parts.Add(("Button_Back", Vector2Int.RoundToInt(BackButtonSize), root =>
         {
-            AddRoundBox(root, LabelBoxColor);
-            FillText(root, "Text", "이전으로", 40, TextColor, true);
+            AddRoundBox(root, Color.white);
+            FillText(root, "Text", "HOME", 40, DarkTextColor, true);
         }));
 
         // 카드 오른쪽 아래 뒤집기 버튼: 앞면에서는 "정보", 뒷면에서는 "사진"
@@ -195,10 +186,8 @@ public static class EMWorldStaticLayouts
         parts.Add(("Button_CardImage", Vector2Int.RoundToInt(FlipButtonSize), root =>
             CircleButton(root, "사진", LabelBoxColor, TextColor)));
 
-        parts.Add(("NoImage_Message", new Vector2Int(460, 130), root =>
-            FillText(root, "Text", "해당 파장대에서 촬영한\n이미지가 존재하지 않습니다.", 38, TextColor, true)));
-        parts.Add(("NoImage_Sub", new Vector2Int(460, 44), root =>
-            FillText(root, "Text", "이미지가 있는 파장대", 28, SubTextColor)));
+        parts.Add(("NoImage_Message", new Vector2Int(347, 193), root =>
+            FillText(root, "Text", "해당 파장대에서 촬영한\n이미지가 존재하지 않습니다.", 30, TextColor, true)));
 
         return parts;
     }
@@ -206,15 +195,15 @@ public static class EMWorldStaticLayouts
     private static void CircleButton(RectTransform root, string text, Color box, Color textColor)
     {
         AddImage(root, box).sprite = Circle;
-        FillText(root, "Text", text, 30, textColor, true);
+        FillText(root, "Text", text, 26, textColor, true);
     }
 
     private static void InfoMenuButton(RectTransform root, int index)
     {
         AddRoundBox(root, InfoMenuColors[index]);
-        CreateText(root, "Number", $"{index + 1:00}", new Vector2(-350, 0), new Vector2(130, 100), 64, AccentColor, true);
-        TextMeshProUGUI title = CreateText(root, "Title", InfoTitles[index], new Vector2(70, 0), new Vector2(700, 170), 48,
-            TextColor, true, TextAlignmentOptions.MidlineLeft);
+        CreateText(root, "Number", $"{index + 1:00}", new Vector2(-150, 230), new Vector2(130, 80), 56, AccentColor, true);
+        TextMeshProUGUI title = CreateText(root, "Title", InfoTitles[index], new Vector2(0, -170), new Vector2(420, 140), 48,
+            TextColor, true);
         title.enableAutoSizing = true;
         title.fontSizeMin = 34;
         title.fontSizeMax = 48;

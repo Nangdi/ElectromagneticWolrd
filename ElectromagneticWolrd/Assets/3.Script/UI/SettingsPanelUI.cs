@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
@@ -46,8 +47,25 @@ public class SettingsPanelUI : MonoBehaviour
     [Header("적용 대상 (비워두면 자동 탐색)")]
     [SerializeField] private UnityAlwaysOnTop alwaysOnTop;
 
+    [Tooltip("설정 파일 폴더(persistentDataPath)를 보여 줄 글자. 비워두면 표시하지 않음")]
+    [SerializeField] private TMP_Text pathText;
+
     // 설정이 바뀔 때 (필드 이름, 새 값)을 알린다. 프로젝트별 반영 처리는 여기에 붙인다.
     public event Action<string, bool> OnSettingChanged;
+    // 설정창이 열리거나(true) 닫힐 때(false) 알린다. 다른 설정 묶음이 열릴 때 값을 새로 읽는 데 쓴다.
+    public event Action<bool> OnPanelVisibilityChanged;
+
+    public bool IsOpen => panelRoot != null && panelRoot.activeSelf;
+
+    private void OnEnable()
+    {
+        HotkeyHelp.Register(this, toggleKey, "설정창 열기/닫기 (바꾼 값은 바로 저장)", "모든 화면");
+    }
+
+    private void OnDisable()
+    {
+        HotkeyHelp.Unregister(this);
+    }
 
     // 데이터 -> UI 반영 중에는 onValueChanged 콜백이 저장을 유발하지 않도록 막는다.
     private bool _syncing;
@@ -68,6 +86,9 @@ public class SettingsPanelUI : MonoBehaviour
             captured.handler = value => OnToggleChanged(captured, value);
             captured.toggle.onValueChanged.AddListener(captured.handler);
         }
+
+        if (pathText != null)
+            pathText.text = $"설정 파일 폴더: {Application.persistentDataPath}";
 
         if (hideOnStart)
             SetPanelVisible(false);
@@ -154,6 +175,7 @@ public class SettingsPanelUI : MonoBehaviour
         {
             RestoreCursor();         // 설정값대로 복원
         }
+        OnPanelVisibilityChanged?.Invoke(show);
     }
 
     // 현재 showMouseCursor 설정값대로 커서 표시/숨김을 되돌린다.

@@ -6,20 +6,22 @@ using UnityEngine.UI;
 //
 // 경계에서 섞일 때 위 칸의 뷰는 요소마다 반투명하게 겹쳐 그려진다. 그래서 겹친 요소 아래가 비치지 않도록
 //  - 앞면 사진, 뒷면(미리 구운 이미지 한 장)은 각각 불투명한 단일 이미지로 두고
-//  - 테두리(속이 빈 9-slice)와 뒤집기 아이콘은 그 위에 그린다 (모든 칸에서 같은 모습이라 겹쳐도 그대로 보인다).
+//  - 칸과 상관없이 모양이 같은 장식은 칸으로 나누지 않고 카드마다 한 번만 그린다:
+//    사진 아래 테두리와 그림자는 CardUnderlayView, 사진 위 제목 탭과 뒤집기 아이콘은 CardChromeView.
 public class CardBandView : MonoBehaviour
 {
     [SerializeField] private CanvasGroup group;
     [SerializeField] private GameObject front;
+    [Tooltip("사진은 사진 영역(둥근 마스크)을 가득 채우도록 비율에 맞춰 늘어난다")]
     [SerializeField] private Image picture;
+    [SerializeField] private AspectRatioFitter pictureFitter;
     [SerializeField] private NoImageView noImage;
     [Tooltip("레일 위에서 앞면 위에 덮이는 원본 이미지. 모든 칸에서 같아서 경계를 넘어도 그대로 보인다")]
     [SerializeField] private CanvasGroup original;
     [SerializeField] private Image originalPicture;
+    [SerializeField] private AspectRatioFitter originalFitter;
     [SerializeField] private RawImage back;
-    [SerializeField] private CanvasGroup flipIcon;
-    [SerializeField] private GameObject infoIcon;
-    [SerializeField] private GameObject imageIcon;
+
 
     private bool showingBack;
     private bool originalOpaque;
@@ -29,21 +31,25 @@ public class CardBandView : MonoBehaviour
     public void Set(CardData data, BandType band, Texture backTexture)
     {
         Sprite sprite = data?.GetSprite(band);
-        picture.sprite = sprite;
-        picture.enabled = sprite != null;
+        SetPicture(picture, pictureFitter, sprite);
 
         bool showNoImage = data != null && sprite == null;
         noImage.gameObject.SetActive(showNoImage);
         if (showNoImage)
             noImage.Set(data);
 
-        Sprite originalSprite = data?.GetOriginal();
-        originalPicture.sprite = originalSprite;
-        originalPicture.enabled = originalSprite != null;
+        SetPicture(originalPicture, originalFitter, data?.GetOriginal());
 
         back.texture = backTexture;
         SetFace(false);
-        SetFlipIconAlpha(0f);
+    }
+
+    private static void SetPicture(Image image, AspectRatioFitter fitter, Sprite sprite)
+    {
+        image.sprite = sprite;
+        image.enabled = sprite != null;
+        if (sprite != null && sprite.rect.height > 0f)
+            fitter.aspectRatio = sprite.rect.width / sprite.rect.height;
     }
 
     public void SetFace(bool showBack)
@@ -51,8 +57,6 @@ public class CardBandView : MonoBehaviour
         showingBack = showBack;
         RefreshFront();
         back.gameObject.SetActive(showBack);
-        infoIcon.SetActive(!showBack);
-        imageIcon.SetActive(showBack);
     }
 
     public void SetOriginalAlpha(float alpha)
@@ -72,11 +76,6 @@ public class CardBandView : MonoBehaviour
     private void RefreshFront()
     {
         front.SetActive(!showingBack && !originalOpaque);
-    }
-
-    public void SetFlipIconAlpha(float alpha)
-    {
-        flipIcon.alpha = alpha;
     }
 
     public void SyncTo(RectTransform master, float alpha)

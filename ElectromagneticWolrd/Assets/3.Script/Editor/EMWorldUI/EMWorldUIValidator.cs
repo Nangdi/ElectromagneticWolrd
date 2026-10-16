@@ -22,7 +22,7 @@ public static class EMWorldUIValidator
                 problems += Report($"정적 레이어 이미지가 없습니다: {StaticSpritePath(panel)}", null);
         }
 
-        foreach (string part in new[] { "Card", "CardBandView", "CardBack", "NoImageThumb" })
+        foreach (string part in new[] { "Card", "CardBandView", "CardUnderlay", "CardChrome", "CardBack", "NoImageThumb" })
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PartPrefabPath(part));
             if (prefab == null)

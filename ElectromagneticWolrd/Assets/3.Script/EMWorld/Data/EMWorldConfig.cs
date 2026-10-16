@@ -12,7 +12,7 @@ public class EMWorldConfig
     // 레일
     public float railSpeed = 80f;          // 레일이 흐르는 속도 (px/초, 7680x2160 기준)
     public float railMinSpacing = 380f;    // 레일 위 카드 사이 최소 간격 (px)
-    public float railCardScale = 0.5f;     // 레일 위 카드 크기 (꺼냈을 때 크기 대비)
+    public float railCardScale = 0.43f;    // 레일 위 카드 크기 (꺼냈을 때 크기 대비. 디자인: 500x558 → 216x240)
     public bool railShowsOriginal = true;  // 레일 위 카드는 파장과 관계없이 원본 이미지로 보이고, 꺼내면 파장별 이미지로 바뀐다
     public float originalFadeSeconds = 0.4f; // 꺼낼 때 원본에서 파장별 이미지로 바뀌는 시간
 
@@ -36,6 +36,23 @@ public class EMWorldConfig
     public static EMWorldConfig Current => current ??= Load();
 
     public static string FilePath => Path.Combine(Application.persistentDataPath, FileName);
+
+    // 설정창에서 값을 바꾸면 (필드 이름)을 알린다. 시작할 때만 읽는 기능은 여기에 반응해 다시 적용한다.
+    public static event Action<string> Changed;
+
+    // 설정창에서 바꾼 값을 바로 파일에 저장하고 알린다.
+    public static void Save(string changedField)
+    {
+        try
+        {
+            JsonManager.SaveData(Current, FilePath);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"운영값 파일을 저장하지 못했습니다: {e.Message}");
+        }
+        Changed?.Invoke(changedField);
+    }
 
     private static EMWorldConfig Load()
     {

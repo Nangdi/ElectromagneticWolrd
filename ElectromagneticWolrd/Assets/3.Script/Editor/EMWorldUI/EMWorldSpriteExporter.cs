@@ -20,12 +20,11 @@ public static class EMWorldSpriteExporter
     // 둥근 박스 부품 (9-slice, 흰색. 색은 프리팹이 칠한다). radius가 곧 slice 테두리 크기.
     private static readonly (string name, int radius)[] ShapeParts =
     {
-        ("Card_Frame", 14),
-        ("NoImage_Bg", 12),
+        ("Card_PictureMask", (int)CardCornerRadius), // 카드 사진을 둥글게 자르는 마스크
     };
 
     // 가이드에서 통째로 표시하지 않는 컨테이너 (자식 단위로 표시하거나 따로 표시)
-    private static readonly HashSet<string> GuideSkipNames = new HashSet<string> { "Bands", "CardLayer", "Labels" };
+    private static readonly HashSet<string> GuideSkipNames = new HashSet<string> { "Bands", "CardLayer" };
 
     private static readonly Color GuideColor = new Color(1f, 0.1f, 0.8f, 1f);
 
@@ -164,12 +163,6 @@ public static class EMWorldSpriteExporter
         foreach (Transform child in panel)
         {
             if (child.name == StaticLayerName) continue;
-            if (child.name == "Labels")
-            {
-                foreach (Transform label in child)
-                    MarkArea((RectTransform)label, label.name);
-                continue;
-            }
             if (GuideSkipNames.Contains(child.name)) continue;
             MarkArea((RectTransform)child, child.name);
         }

@@ -82,10 +82,12 @@ public class JsonManager : MonoBehaviour
             return;
         }
 
-        portPath = Path.Combine(Application.streamingAssetsPath, "port.json");
-        tcpPath = Path.Combine(Application.streamingAssetsPath, "tcp.json");
-        gameDynamicDataPath = Path.Combine(Application.streamingAssetsPath, "Setting.json");
-        gameDataPath = Path.Combine(Application.persistentDataPath, "gameSettingData.json");
+        // 모든 설정 파일은 persistentDataPath에서 읽고 쓴다 (빌드를 덮어써도 현장 설정이 남도록).
+        // StreamingAssets에는 기본값 원본만 두고, persistent 쪽에 파일이 없을 때만 복사해 온다.
+        portPath = PersistentPath("port.json");
+        tcpPath = PersistentPath("tcp.json");
+        gameDynamicDataPath = PersistentPath("Setting.json");
+        gameDataPath = PersistentPath("gameSettingData.json");
 
         gameSettingData ??= new GameSettingData();
         gameDynamicData ??= new GameDynamicData();
@@ -97,6 +99,9 @@ public class JsonManager : MonoBehaviour
         portJson = LoadData(portPath, portJson);
         tcpJson = LoadData(tcpPath, tcpJson);
     }
+
+    public static string PersistentPath(string fileName) => Path.Combine(Application.persistentDataPath, fileName);
+    public static string DefaultsPath(string fileName) => Path.Combine(Application.streamingAssetsPath, fileName);
 
     // 현재 게임 설정 데이터를 gameSettingData.json 파일에 저장합니다.
     public void SaveGameSettingData()
@@ -119,23 +124,47 @@ public class JsonManager : MonoBehaviour
         Debug.Log($"Saved JSON: {path}");
     }
 
-    // JSON 파일을 읽고, 파일이 없으면 기본값으로 새 파일을 만듭니다.
+    // persistentDataPath의 JSON 파일을 읽는다.
+    //  1) 파일이 있으면 그것만 읽는다.
+    //  2) 없으면 StreamingAssets의 같은 이름 파일(기본값 원본)을 복사해 온다.
+    //  3) 그것도 없으면 코드 기본값으로 새로 만든다.
+    // 읽은 뒤 다시 저장해서 새 버전에 추가된 필드도 기본값으로 채운다.
     // FromJsonOverwrite를 사용해 json에 없는 필드는 인스턴스 기본값을 유지한다.
     // (예: 기존 port.json에 enabled 필드가 없어도 PortConfig.enabled = true 가 보존됨)
+    // 읽기에 실패해도 앱은 멈추지 않고 기본값으로 실행한다.
     public static T LoadData<T>(string path, T data) where T : new()
     {
         if (data == null) data = new T();
 
-        if (!File.Exists(path))
+        try
         {
-            Debug.LogWarning($"JSON file does not exist. Creating a new file: {path}");
-            SaveData(data, path);
-            return data;
-        }
+            if (!File.Exists(path))
+            {
+                string source = DefaultsPath(Path.GetFileName(path));
+                if (File.Exists(source))
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(path));
+                    File.Copy(source, path);
+                    Debug.Log($"기본값 원본을 복사했습니다: {source} -> {path}");
+                }
+            }
 
-        Debug.Log($"Loaded JSON: {path}");
-        string json = File.ReadAllText(path);
-        JsonUtility.FromJsonOverwrite(json, data);
+            if (File.Exists(path))
+            {
+                Debug.Log($"Loaded JSON: {path}");
+                JsonUtility.FromJsonOverwrite(File.ReadAllText(path), data);
+            }
+            else
+            {
+                Debug.LogWarning($"JSON file does not exist. Creating a new file: {path}");
+            }
+
+            SaveData(data, path);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"설정 파일을 읽지 못해 기본값으로 실행합니다: {path} ({e.Message})");
+        }
         return data;
     }
 }
