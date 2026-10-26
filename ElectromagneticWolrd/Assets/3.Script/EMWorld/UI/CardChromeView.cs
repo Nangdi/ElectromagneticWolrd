@@ -29,10 +29,11 @@ public class CardChromeView : MonoBehaviour
         imageIcon.SetActive(showBack);
     }
 
-    public void SetPopupAlpha(float alpha)
+    // showFlip: 뒤집기 기능(EMWorldConfig.cardFlipEnabled)을 끄면 뒤집기 아이콘은 숨긴다
+    public void SetPopupAlpha(float alpha, bool showFlip = true)
     {
         titleTab.alpha = alpha;
-        flipIcon.alpha = alpha;
+        flipIcon.alpha = showFlip ? alpha : 0f;
     }
 
     public void SyncTo(RectTransform master, float alpha)

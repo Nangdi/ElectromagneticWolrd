@@ -243,6 +243,10 @@ public static class EMWorldUIKit
 
     public static RectTransform StretchFull(RectTransform rt) => Stretch(rt, Vector2.zero, Vector2.one);
 
+    // 기준 해상도 크기의 고정 틀. 캔버스가 Expand로 커져도 패널 배치는 그대로다.
+    public const string FrameName = "Frame";
+    public static RectTransform CreateFrame(Transform canvas) => Place(CreateRect(FrameName, canvas), Vector2.zero, ReferenceResolution);
+
     public static Image AddImage(RectTransform rt, Color color)
     {
         var image = rt.gameObject.AddComponent<Image>();

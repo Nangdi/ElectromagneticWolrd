@@ -8,6 +8,7 @@
     "pickupSeconds": 0.25,
     "rotateSeconds": 0.35,
     "returnAnimSeconds": 0.4,
+    "cardFlipEnabled": false,
     "flipSeconds": 0.5,
     "glideDamping": 3.5,
     "glideMaxSpeed": 6000.0,

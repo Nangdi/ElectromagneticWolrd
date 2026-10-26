@@ -277,6 +277,7 @@ public class CardController : MonoBehaviour, IPointerDownHandler, IDragHandler, 
     // 오른쪽 아래 버튼: 꺼낸 카드를 뒤집는다. 반쯤(옆으로 선 순간) 접혔을 때 앞‧뒷면을 바꾸고, 살짝 튕기며 자리 잡는다.
     public void Flip()
     {
+        if (!Config.cardFlipEnabled) return;
         if (flipPhase != FlipPhase.None) return;
         if (State != CardState.Held && State != CardState.Free) return;
 
@@ -339,12 +340,17 @@ public class CardController : MonoBehaviour, IPointerDownHandler, IDragHandler, 
         float speed = 1f / Mathf.Max(0.01f, buttonFadeSeconds);
         popupAlpha = Mathf.MoveTowards(popupAlpha, show ? 1f : 0f, speed * dt);
         underlay.SetPopupAlpha(popupAlpha);
-        chrome.SetPopupAlpha(popupAlpha);
+        bool flipEnabled = Config.cardFlipEnabled;
+        chrome.SetPopupAlpha(popupAlpha, flipEnabled);
         bool usable = show && popupAlpha > 0.5f;
-        flipButtonGroup.interactable = usable;
-        flipButtonGroup.blocksRaycasts = usable;
+        flipButtonGroup.interactable = usable && flipEnabled;
+        flipButtonGroup.blocksRaycasts = usable && flipEnabled;
         closeButtonGroup.interactable = usable;
         closeButtonGroup.blocksRaycasts = usable;
+
+        // 뒤집기를 끄면 정보면으로 뒤집혀 있던 카드도 사진면으로 되돌린다
+        if (!flipEnabled && showingBack && flipPhase == FlipPhase.None)
+            SetFace(false);
     }
 
     #endregion

@@ -21,6 +21,7 @@ public class EMWorldConfig
     public float pickupSeconds = 0.25f;    // 꺼낼 때 커지는 연출 시간
     public float rotateSeconds = 0.35f;    // 관람객 방향으로 도는 연출 시간
     public float returnAnimSeconds = 0.4f; // 돌아갈 때 작아지며 사라지는 연출 시간
+    public bool cardFlipEnabled = false;   // 꺼낸 카드 오른쪽 아래 버튼으로 정보면/사진면 뒤집기. 끄면 버튼이 숨고 사진면만 보인다
     public float flipSeconds = 0.5f;       // 카드가 뒤집혀 정보면/사진면으로 바뀌는 연출 시간
     public float glideDamping = 3.5f;      // 놓은 뒤 미끄러지는 속도가 줄어드는 정도 (클수록 빨리 멈춤. 미끄러지는 거리 = 속도 / 이 값)
     public float glideMaxSpeed = 6000f;    // 미끄러지기 시작 속도 상한 (px/초)

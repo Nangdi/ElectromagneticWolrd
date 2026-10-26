@@ -14,14 +14,15 @@ using static EMWorldUIKit;
 // 메뉴: Tools > 전자기파로 보는 세상 > 1. 프리팹 생성 및 씬 적용
 //
 // 구조
-//  Canvas_EMWorld.prefab (7680x2160)
-//   ├ Panel_Spectrum.prefab        왼쪽 7칸 (6720x2160)
-//   │  ├ StaticLayer               배경, 사인파, 레일 바탕, 파장 이름 라벨 (Static_Spectrum.png)
-//   │  ├ Bands/Band_xxx            파장 칸 7개 (RectMask2D). 카드의 파장별 뷰가 런타임에 들어간다
-//   │  ├ CardLayer                 카드 본체(투명, 터치 담당)가 런타임에 들어간다
-//   │  └ RailEndShadow             레일 오른쪽 끝 그림자 (카드 위)
-//   └ InfoBoard                    맨 오른쪽 1칸 (960x2160). StaticLayer = Static_InfoBoard.png
-//      └ Info (90° 회전, 2160x960, 0.96배)  Panel_InfoMenu + Panel_InfoDetail01~04. 테이블 오른쪽 끝의 한 사람용
+//  Canvas_EMWorld.prefab (7680x2160, Expand: 비율이 달라도 잘리지 않고 남는 곳은 카메라 배경색)
+//   └ Frame                           기준 해상도 고정 틀 (7680x2160). 패널은 모두 이 안에 둔다
+//      ├ Panel_Spectrum.prefab        왼쪽 7칸 (6720x2160)
+//      │  ├ StaticLayer               배경, 사인파, 레일 바탕, 파장 이름 라벨 (Static_Spectrum.png)
+//      │  ├ Bands/Band_xxx            파장 칸 7개 (RectMask2D). 카드의 파장별 뷰가 런타임에 들어간다
+//      │  ├ CardLayer                 카드 본체(투명, 터치 담당)가 런타임에 들어간다
+//      │  └ RailEndShadow             레일 오른쪽 끝 그림자 (카드 위)
+//      └ InfoBoard                    맨 오른쪽 1칸 (960x2160). StaticLayer = Static_InfoBoard.png
+//         └ Info (90° 회전, 2160x960, 0.96배)  Panel_InfoMenu + Panel_InfoDetail01~04. 테이블 오른쪽 끝의 한 사람용
 //
 // 이미 있는 프리팹은 덮어쓰지 않는다. 직접 수정한 프리팹을 지키기 위해서다.
 // 프리팹을 처음 상태로 되돌리고 싶으면 해당 .prefab 파일을 지운 뒤 다시 실행한다.
@@ -555,14 +556,15 @@ public static class EMWorldPrefabBuilder
         var scaler = go.AddComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = ReferenceResolution;
-        scaler.matchWidthOrHeight = 0.5f;
+        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
 
         go.AddComponent<GraphicRaycaster>();
 
-        PrefabUtility.InstantiatePrefab(spectrum, go.transform);
+        RectTransform frame = CreateFrame(go.transform);
+        PrefabUtility.InstantiatePrefab(spectrum, frame);
 
         // 정보검색 칸 바탕(배경 디자인의 오른쪽 칸). 레일 카드가 이 밑으로 지나가며 가려진다.
-        RectTransform infoBoard = Place(CreateRect("InfoBoard", go.transform), InfoColumnCenter, new Vector2(ColumnWidth, ScreenHeight));
+        RectTransform infoBoard = Place(CreateRect("InfoBoard", frame), InfoColumnCenter, new Vector2(ColumnWidth, ScreenHeight));
         AddStaticLayer(infoBoard, "InfoBoard");
         CreateInfo(infoBoard, infoMenu, infoDetails);
         return go;

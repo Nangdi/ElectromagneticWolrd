@@ -44,14 +44,11 @@ public class UnityAlwaysOnTop : MonoBehaviour
             Debug.Log("에디터에서는 AlwaysOnTop 설정 생략");
             return;
         }
-        // 멀티 디스플레이 활성화
-        if (Display.displays.Length > 1)
+        // 멀티 디스플레이 활성화: 카메라나 캔버스가 실제로 그리는 디스플레이만 켠다.
+        // 그릴 것이 없는 디스플레이를 켜면 그 모니터가 검은 화면으로 덮인다.
+        for (int i = 1; i < Display.displays.Length; i++)
         {
-            Display.displays[1].Activate();
-        }
-        if (Display.displays.Length > 2)
-        {
-            Display.displays[2].Activate();
+            if (IsDisplayUsed(i)) Display.displays[i].Activate();
         }
 
         var jm = JsonManager.instance;
@@ -61,6 +58,20 @@ public class UnityAlwaysOnTop : MonoBehaviour
         // FullScreenWindow 전환/창 재생성 과정에서 topmost가 풀릴 수 있어 잠시 뒤 재적용
         if (onTop) StartCoroutine(ReapplyAlwaysOnTop());
         ApplyMouseCursor(jm == null || jm.gameSettingData.showMouseCursor);
+    }
+
+    // 이 디스플레이에 그리는 카메라나 Overlay 캔버스가 있는지
+    private static bool IsDisplayUsed(int display)
+    {
+        foreach (var cam in Camera.allCameras)
+        {
+            if (cam.targetDisplay == display) return true;
+        }
+        foreach (var canvas in FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (canvas.isRootCanvas && canvas.renderMode == RenderMode.ScreenSpaceOverlay && canvas.targetDisplay == display) return true;
+        }
+        return false;
     }
 
     /// <summary>

@@ -62,6 +62,7 @@ public static class EMWorldSettingsBuilder
         Number(Column.Right, "연출", "bandBlendWidth", "파장 경계 블렌딩 폭", "px", 0, 400),
         Number(Column.Right, null, "pickupSeconds", "꺼낼 때 커지는 시간", "초", 0, 2, 2),
         Number(Column.Right, null, "rotateSeconds", "관람객 쪽으로 도는 시간", "초", 0, 2, 2),
+        Toggle(Column.Right, null, "cardFlipEnabled", "카드 뒤집기 버튼 사용"),
         Number(Column.Right, null, "flipSeconds", "카드 뒤집기 시간", "초", 0.1f, 3, 2),
         Number(Column.Right, null, "returnAnimSeconds", "돌아갈 때 사라지는 시간", "초", 0.05f, 3, 2),
         Number(Column.Right, null, "originalFadeSeconds", "원본 → 파장 사진 전환 시간", "초", 0, 3, 2),
@@ -119,7 +120,7 @@ public static class EMWorldSettingsBuilder
         var scaler = go.AddComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = ReferenceResolution;
-        scaler.matchWidthOrHeight = 0.5f;
+        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
         go.AddComponent<GraphicRaycaster>();
         return go;
     }
