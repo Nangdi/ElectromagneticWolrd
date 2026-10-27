@@ -1,0 +1,9 @@
+{
+    "sounds": [
+        { "key": "button", "file": "sfx_button.wav", "volume": 0.7 },
+        { "key": "select", "file": "sfx_select.wav", "volume": 0.7 },
+        { "key": "pickup", "file": "sfx_pickup.wav", "volume": 0.6 },
+        { "key": "close",  "file": "sfx_close.wav",  "volume": 0.6 },
+        { "key": "flip",   "file": "sfx_flip.wav",   "volume": 0.6 }
+    ]
+}

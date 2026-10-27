@@ -1,0 +1,8 @@
+{
+    "masterVolume": 1.0,
+    "bgmVolume": 0.7,
+    "sfxVolume": 0.6,
+    "bgmMute": false,
+    "sfxMute": false,
+    "bgmFadeSeconds": 1.5
+}

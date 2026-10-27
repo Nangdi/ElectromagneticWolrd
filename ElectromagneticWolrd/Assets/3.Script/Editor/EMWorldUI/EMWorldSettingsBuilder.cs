@@ -11,7 +11,7 @@ using static EMWorldUIKit;
 // 메뉴: Tools > 전자기파로 보는 세상 > 8. 설정창·도움말 다시 만들기 (덮어쓰기)
 //
 //  Canvas_Settings (sortingOrder 100)  왼쪽 모니터 가운데
-//   └ Panel_Settings  화면(항상 위, 커서) / 운영 / 레일 | 연출  — 바꾸면 바로 적용하고 persistentDataPath에 저장
+//   └ Panel_Settings  화면(항상 위, 커서) / 운영 / 레일 | 연출 | 소리  — 바꾸면 바로 적용하고 persistentDataPath에 저장
 //  Canvas_Help (sortingOrder 110)      오른쪽 모니터 가운데
 //   └ Panel_Help      HotkeyHelp에 등록된 키 목록 (줄은 Parts/HelpRow 프리팹으로 실행할 때 만든다)
 //
@@ -29,6 +29,17 @@ public static class EMWorldSettingsBuilder
     {
         ("useUnityOnTop", "항상 맨 위에 띄우기"),
         ("showMouseCursor", "마우스 커서 표시"),
+    };
+
+    // 소리 (soundSetting.json, SoundSettingsSection이 처리). 서브 콘텐츠라 BGM 항목 없이 전체·SFX 볼륨과 SFX 음소거만 둔다.
+    private static readonly (SoundSettingsSection.Volume target, string label)[] SoundVolumes =
+    {
+        (SoundSettingsSection.Volume.Master, "전체 볼륨"),
+        (SoundSettingsSection.Volume.Sfx, "효과음 볼륨"),
+    };
+    private static readonly (SoundSettingsSection.Mute target, string label)[] SoundMutes =
+    {
+        (SoundSettingsSection.Mute.Sfx, "효과음 음소거"),
     };
 
     private enum Column { Left, Right }
@@ -72,10 +83,12 @@ public static class EMWorldSettingsBuilder
 
     // 배치 (7680x2160 기준)
     private static readonly Vector2 SettingsPanelPos = new Vector2(-ScreenWidth * 0.25f, 0);   // 왼쪽 모니터 가운데
-    private static readonly Vector2 SettingsPanelSize = new Vector2(2700, 2000);
+    private static readonly Vector2 SettingsPanelSize = new Vector2(3740, 2000);
     private static readonly Vector2 HelpPanelPos = new Vector2(ScreenWidth * 0.25f - 300f, 0); // 오른쪽 모니터 (정보검색 칸 피함)
     private const float HelpPanelWidth = 1900f;
     private const float ColumnWidthPx = 1250f;
+    private const float SoundColumnWidthPx = 900f;
+    private const float ColumnSpacing = 80f;
     private const float RowHeight = 96f;
     private const float RowSpacing = 18f;
 
@@ -189,7 +202,7 @@ public static class EMWorldSettingsBuilder
         Size(hint, height: 70);
 
         RectTransform columns = CreateRect("Columns", panel);
-        AddHorizontal(columns, 100).childAlignment = TextAnchor.UpperLeft;
+        AddHorizontal(columns, ColumnSpacing).childAlignment = TextAnchor.UpperLeft;
         Size(columns, height: 1400);
         RectTransform left = CreateRect("Column_Left", columns);
         AddVertical(left, RowSpacing);
@@ -197,6 +210,9 @@ public static class EMWorldSettingsBuilder
         RectTransform right = CreateRect("Column_Right", columns);
         AddVertical(right, RowSpacing);
         Size(right, ColumnWidthPx, 1400);
+        RectTransform soundColumn = CreateRect("Column_Sound", columns);
+        AddVertical(soundColumn, RowSpacing);
+        Size(soundColumn, SoundColumnWidthPx, 1400);
 
         // 화면 (gameSettingData.json)
         SectionHeader(left, "화면");
@@ -229,6 +245,18 @@ public static class EMWorldSettingsBuilder
                 });
             }
         }
+
+        // 소리 (soundSetting.json)
+        SectionHeader(soundColumn, "소리");
+        var soundVolumes = new List<(SoundSettingsSection.Volume target, Slider slider, TMP_Text value)>();
+        foreach (var (target, label) in SoundVolumes)
+        {
+            Slider slider = CreateSliderRow(soundColumn, target.ToString(), label, out TMP_Text value);
+            soundVolumes.Add((target, slider, value));
+        }
+        var soundMutes = new List<(SoundSettingsSection.Mute target, Toggle toggle)>();
+        foreach (var (target, label) in SoundMutes)
+            soundMutes.Add((target, CreateToggleRow(soundColumn, $"{target}Mute", label)));
 
         TextMeshProUGUI path = Text(panel, "FilePath", "설정 파일 폴더: (실행하면 표시)", SubSize, SubTextColor);
         Size(path, height: 70);
@@ -271,6 +299,28 @@ public static class EMWorldSettingsBuilder
         }
         so.ApplyModifiedPropertiesWithoutUndo();
 
+        var sound = go.AddComponent<SoundSettingsSection>();
+        so = new SerializedObject(sound);
+        so.FindProperty("panel").objectReferenceValue = settings;
+        SerializedProperty volumeList = so.FindProperty("volumes");
+        volumeList.arraySize = soundVolumes.Count;
+        for (int i = 0; i < soundVolumes.Count; i++)
+        {
+            SerializedProperty e = volumeList.GetArrayElementAtIndex(i);
+            e.FindPropertyRelative("target").enumValueIndex = (int)soundVolumes[i].target;
+            e.FindPropertyRelative("slider").objectReferenceValue = soundVolumes[i].slider;
+            e.FindPropertyRelative("valueText").objectReferenceValue = soundVolumes[i].value;
+        }
+        SerializedProperty muteList = so.FindProperty("mutes");
+        muteList.arraySize = soundMutes.Count;
+        for (int i = 0; i < soundMutes.Count; i++)
+        {
+            SerializedProperty e = muteList.GetArrayElementAtIndex(i);
+            e.FindPropertyRelative("target").enumValueIndex = (int)soundMutes[i].target;
+            e.FindPropertyRelative("toggle").objectReferenceValue = soundMutes[i].toggle;
+        }
+        so.ApplyModifiedPropertiesWithoutUndo();
+
         panel.gameObject.SetActive(false); // 기본은 숨김
         return go;
     }
@@ -304,6 +354,53 @@ public static class EMWorldSettingsBuilder
         toggle.graphic = checkImage;
         toggle.isOn = false;
         return toggle;
+    }
+
+    // 이름표  [━━━━●──────]  60%   (움직이는 동안 바로 반영)
+    private static Slider CreateSliderRow(RectTransform column, string name, string label, out TMP_Text valueText)
+    {
+        RectTransform row = CreateRect($"Slider_{name}", column);
+        AddHorizontal(row, 24);
+        Size(row, height: RowHeight);
+
+        Size(Text(row, "Label", label, BodySize, TextColor), 300);
+
+        RectTransform sliderRect = CreateRect("Slider", row);
+        Size(sliderRect, flexibleWidth: 1, height: RowHeight);
+
+        RectTransform track = Stretch(CreateRect("Background", sliderRect), new Vector2(0, 0.5f), new Vector2(1, 0.5f));
+        track.sizeDelta = new Vector2(0, 20);
+        AddRoundBox(track, FieldColor);
+
+        RectTransform fillArea = Stretch(CreateRect("Fill Area", sliderRect), new Vector2(0, 0.5f), new Vector2(1, 0.5f));
+        fillArea.sizeDelta = new Vector2(0, 20);
+        RectTransform fill = CreateRect("Fill", fillArea);
+        fill.sizeDelta = Vector2.zero;
+        AddRoundBox(fill, AccentColor);
+
+        RectTransform handleArea = StretchFull(CreateRect("Handle Slide Area", sliderRect));
+        handleArea.offsetMin = new Vector2(32, 0);
+        handleArea.offsetMax = new Vector2(-32, 0);
+        RectTransform handle = CreateRect("Handle", handleArea);
+        handle.sizeDelta = new Vector2(64, 0);
+        // 유니티 기본 원 스프라이트 (EMWorldUIKit.Circle은 에셋이 아니라 프리팹에 저장되지 않는다)
+        Image handleImage = AddSprite(handle, AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd"), TextColor);
+        handleImage.preserveAspect = true;
+        handleImage.raycastTarget = true;
+
+        var slider = sliderRect.gameObject.AddComponent<Slider>();
+        slider.fillRect = fill;
+        slider.handleRect = handle;
+        slider.targetGraphic = handleImage;
+        slider.direction = Slider.Direction.LeftToRight;
+        slider.minValue = 0f;
+        slider.maxValue = 1f;
+        slider.value = 1f;
+
+        TextMeshProUGUI value = Text(row, "Value", "100%", BodySize, TextColor, true, TextAlignmentOptions.MidlineRight);
+        Size(value, 150);
+        valueText = value;
+        return slider;
     }
 
     // 이름표 ......... [ 입력칸 ] 단위

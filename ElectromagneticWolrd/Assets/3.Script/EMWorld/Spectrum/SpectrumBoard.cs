@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -30,6 +31,11 @@ public class SpectrumBoard : MonoBehaviour
     // 파장 칸별 마스크 (위치 기준 칸 + 카드마다 복제한 칸). 블렌딩 폭을 바꾸면 모두 다시 맞춘다.
     private readonly List<RectMask2D>[] bandMasks = new List<RectMask2D>[BandInfo.Count];
     private Vector2[] bandBasePos, bandBaseSize; // 블렌딩으로 넓히기 전 칸 자리
+
+    // 관람객 동작 알림 (소리 등 연출 연결용)
+    public event Action<CardController> CardPickedUp;
+    public event Action<CardController> CardClosed;
+    public event Action<CardController> CardFlipped;
 
     public RailController Rail => rail;
     public Vector2 AreaHalfSize => cardLayer.rect.size * 0.5f;
@@ -78,6 +84,8 @@ public class SpectrumBoard : MonoBehaviour
             card.Init(this, data, views, underlay, chrome, back);
             card.PickedUp += OnCardPickedUp;
             card.ReturnFinished += OnCardReturnFinished;
+            card.Closed += c => CardClosed?.Invoke(c);
+            card.Flipped += c => CardFlipped?.Invoke(c);
             cards.Add(card);
             visualByCard.Add(card, visual);
         }
@@ -180,6 +188,7 @@ public class SpectrumBoard : MonoBehaviour
     private void OnCardPickedUp(CardController card)
     {
         rail.Detach(card);
+        CardPickedUp?.Invoke(card);
     }
 
     private void OnCardReturnFinished(CardController card)

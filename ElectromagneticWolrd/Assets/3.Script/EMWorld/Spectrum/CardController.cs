@@ -39,6 +39,8 @@ public class CardController : MonoBehaviour, IPointerDownHandler, IDragHandler, 
 
     public event Action<CardController> PickedUp;
     public event Action<CardController> ReturnFinished;
+    public event Action<CardController> Closed;  // X 버튼으로 돌려보냄
+    public event Action<CardController> Flipped; // 뒤집기 시작
 
     public CardData Data { get; private set; }
     public CardState State { get; private set; } = CardState.Waiting;
@@ -154,6 +156,7 @@ public class CardController : MonoBehaviour, IPointerDownHandler, IDragHandler, 
         velocity = Vector2.zero;
         State = CardState.Free;
         BeginReturn();
+        Closed?.Invoke(this);
     }
 
     private void SetWaiting()
@@ -285,6 +288,7 @@ public class CardController : MonoBehaviour, IPointerDownHandler, IDragHandler, 
         flipElapsed = 0f;
         lastTouchTime = Time.unscaledTime;
         board.BringToFront(this);
+        Flipped?.Invoke(this);
     }
 
     private void SetFace(bool back)
