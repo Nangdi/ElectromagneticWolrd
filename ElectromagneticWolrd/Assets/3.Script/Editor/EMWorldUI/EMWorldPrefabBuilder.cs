@@ -281,22 +281,13 @@ public static class EMWorldPrefabBuilder
         RectTransform root = Place(CreateRect("CardBack", null), Vector2.zero, CardSize);
         AddImage(StretchFull(CreateRect("Background", root)), CardColor);
 
-        TMP_Text category = CreateText(root, "Category", "천체", new Vector2(0, 220), new Vector2(420, 44), 28, AccentColor, true);
-        TMP_Text title = CreateText(root, "Title", "게 성운", new Vector2(0, 165), new Vector2(420, 70), 44, TextColor, true);
+        TMP_Text title = CreateText(root, "Title", "게 성운", new Vector2(0, 40), new Vector2(420, 120), 56, TextColor, true);
         title.enableAutoSizing = true;
-        title.fontSizeMin = 30;
-        title.fontSizeMax = 44;
-        AddImage(Place(CreateRect("Divider", root), new Vector2(0, 120), new Vector2(420, 2)), SoftBoxColor);
-
-        TMP_Text description = CreateText(root, "Description",
-            "1054년에 폭발한 초신성의 잔해입니다. 중심의 펄서가 라디오파부터 감마선까지 강한 전자기파를 냅니다.",
-            new Vector2(0, -30), new Vector2(420, 270), 30, TextColor, false, TextAlignmentOptions.TopLeft);
-        description.enableAutoSizing = true;
-        description.fontSizeMin = 22;
-        description.fontSizeMax = 30;
+        title.fontSizeMin = 32;
+        title.fontSizeMax = 56;
 
         var view = root.gameObject.AddComponent<CardBackView>();
-        Wire(view, ("categoryText", category), ("titleText", title), ("descriptionText", description));
+        Wire(view, ("titleText", title));
         return root.gameObject;
     }
 

@@ -4,42 +4,11 @@ using System.IO;
 using System.Linq;
 using UnityEngine;
 
-public enum CardCategory
-{
-    Nature,
-    Object,
-    Space,
-}
-
-public static class CardCategoryInfo
-{
-    public static string DisplayName(CardCategory category) =>
-        category == CardCategory.Nature ? "자연" : category == CardCategory.Object ? "사물" : "천체";
-
-    // card.json의 분류 글자 ("자연", "사물", "천체" 또는 Nature, Object, Space)
-    public static bool TryParse(string text, out CardCategory category)
-    {
-        text = text?.Trim() ?? string.Empty;
-        foreach (CardCategory value in Enum.GetValues(typeof(CardCategory)))
-        {
-            if (text == DisplayName(value) || string.Equals(text, value.ToString(), StringComparison.OrdinalIgnoreCase))
-            {
-                category = value;
-                return true;
-            }
-        }
-        category = CardCategory.Object;
-        return false;
-    }
-}
-
-// card.json 내용
+// card.json 내용: 카드 라벨(제목 탭)에 들어가는 이름만 둔다. 파장별 화면은 이미지만 쓴다.
 [Serializable]
 public class CardInfoFile
 {
     public string title;
-    public string category;
-    public string description;
 }
 
 // 체험용 이미지 카드 한 장. 파장별 이미지가 없으면(null) 그 칸에서는 "이미지 없음" 안내가 보인다.
@@ -47,8 +16,6 @@ public class CardData
 {
     public string id;
     public string title;
-    public CardCategory category;
-    public string description;
 
     // BandType 순서(라디오파 → 감마선)
     public readonly Sprite[] bandSprites = new Sprite[BandInfo.Count];
@@ -75,7 +42,7 @@ public class CardData
 // 카드 이미지와 문구를 StreamingAssets/Cards에서 읽어 온다. 현장에서 파일만 바꾸면 다시 빌드하지 않고 반영된다.
 //  Cards/<카드ID>/<파장>.png   파장: Radio, Microwave, Infrared, Visible, Ultraviolet, XRay, Gamma
 //  Cards/<카드ID>/Original.png 레일 위 원본 이미지 (선택)
-//  Cards/<카드ID>/card.json    제목, 분류, 설명
+//  Cards/<카드ID>/card.json    라벨에 들어가는 이름(title)
 // 카드는 폴더 이름 순서로 나온다. 파장 이미지가 하나도 없는 폴더는 건너뛴다.
 public static class CardLibrary
 {
@@ -130,7 +97,7 @@ public static class CardLibrary
     private static CardData LoadCard(string dir)
     {
         string id = Path.GetFileName(dir);
-        var card = new CardData { id = id, title = id, category = CardCategory.Object, description = string.Empty };
+        var card = new CardData { id = id, title = id };
         ReadInfo(dir, card);
 
         for (int i = 0; i < BandInfo.Count; i++)
@@ -160,9 +127,6 @@ public static class CardLibrary
 
         if (!string.IsNullOrWhiteSpace(info.title))
             card.title = info.title.Trim();
-        if (!string.IsNullOrWhiteSpace(info.category) && !CardCategoryInfo.TryParse(info.category, out card.category))
-            Debug.LogWarning($"알 수 없는 분류 '{info.category}' (자연, 사물, 천체 중 하나): {path}");
-        card.description = info.description ?? string.Empty;
     }
 
     private static Sprite LoadSprite(string dir, string name)

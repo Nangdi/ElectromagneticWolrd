@@ -213,39 +213,29 @@ public static class EMWorldStaticLayouts
 
     #region 임시 카드 이미지 (512x512)
 
-    // 자연‧사물은 적외선‧가시광‧자외선‧X선 4장, 천체는 7장 모두. 나머지 파장 칸은 "이미지 없음" 안내가 보인다.
-    // 설명은 임시 문구다. 실제 문구는 StreamingAssets/Cards/<카드ID>/card.json에서 고친다.
-    public static readonly (string id, string title, CardCategory category, string description)[] TempCards =
+    // allBands가 아니면 적외선‧가시광‧자외선‧X선 4장만, allBands면 7장 모두. 나머지 파장 칸은 "이미지 없음" 안내가 보인다.
+    // 이름은 임시다. 실제 이름은 StreamingAssets/Cards/<카드ID>/card.json의 title에서 고친다.
+    public static readonly (string id, string title, bool allBands)[] TempCards =
     {
-        ("Card_01", "꽃", CardCategory.Nature,
-            "꽃잎에는 자외선으로만 보이는 무늬가 있어, 자외선을 볼 수 있는 곤충에게 꿀이 있는 곳을 알려 줍니다."),
-        ("Card_02", "고양이", CardCategory.Nature,
-            "적외선으로 보면 체온이 높은 눈과 귀 주변은 밝게, 털로 덮인 부분은 어둡게 보입니다."),
-        ("Card_03", "나무", CardCategory.Nature,
-            "식물의 잎은 근적외선을 강하게 반사해서, 적외선 사진에서는 잎이 하얗게 빛나 보입니다."),
-        ("Card_04", "게임 컨트롤러", CardCategory.Object,
-            "X선으로 보면 플라스틱 껍데기 속의 회로 기판과 금속 부품이 드러납니다."),
-        ("Card_05", "리모컨", CardCategory.Object,
-            "리모컨은 눈에 보이지 않는 적외선 신호로 텔레비전에 명령을 보냅니다."),
-        ("Card_06", "주택", CardCategory.Object,
-            "적외선 열화상으로 보면 창문과 틈새로 열이 새어 나가는 곳을 찾을 수 있습니다."),
-        ("Card_07", "은하", CardCategory.Space,
-            "은하는 라디오파부터 감마선까지 모든 파장으로 빛을 냅니다. 파장마다 별, 먼지, 가스 등 서로 다른 모습이 보입니다."),
-        ("Card_08", "태양", CardCategory.Space,
-            "자외선과 X선으로 보면 태양 표면 위의 뜨거운 코로나와 폭발(플레어)이 뚜렷하게 보입니다."),
-        ("Card_09", "게 성운", CardCategory.Space,
-            "1054년에 폭발한 초신성의 잔해입니다. 중심의 펄서가 라디오파부터 감마선까지 강한 전자기파를 냅니다."),
+        ("Card_01", "꽃", false),
+        ("Card_02", "고양이", false),
+        ("Card_03", "나무", false),
+        ("Card_04", "게임 컨트롤러", false),
+        ("Card_05", "리모컨", false),
+        ("Card_06", "주택", false),
+        ("Card_07", "은하", true),
+        ("Card_08", "태양", true),
+        ("Card_09", "게 성운", true),
     };
 
     private static readonly BandType[] EverydayBands = { BandType.Infrared, BandType.Visible, BandType.Ultraviolet, BandType.XRay };
 
-    public static bool HasTempImage(CardCategory category, BandType band) =>
-        category == CardCategory.Space || Array.IndexOf(EverydayBands, band) >= 0;
+    public static bool HasTempImage(bool allBands, BandType band) =>
+        allBands || Array.IndexOf(EverydayBands, band) >= 0;
 
-    public static void TempCard(RectTransform root, string id, string title, CardCategory category, BandType band)
+    public static void TempCard(RectTransform root, string id, string title, BandType band)
     {
         AddImage(StretchFull(CreateRect("Background", root)), TempBandColors[(int)band]);
-        CreateText(root, "Category", CardCategoryInfo.DisplayName(category), new Vector2(0, 200), new Vector2(480, 50), 32, TextColor);
         CreateText(root, "Number", id.Replace("Card_", ""), new Vector2(0, 50), new Vector2(480, 220), 200,
             new Color(1f, 1f, 1f, 0.9f), true);
         CreateText(root, "Title", title, new Vector2(0, -110), new Vector2(480, 70), 52, TextColor, true);

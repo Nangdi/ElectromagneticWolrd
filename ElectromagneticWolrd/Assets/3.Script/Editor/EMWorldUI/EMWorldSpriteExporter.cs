@@ -103,12 +103,7 @@ public static class EMWorldSpriteExporter
                 string infoPath = CardInfoPath(card.id);
                 if (overwrite || !File.Exists(infoPath))
                 {
-                    var info = new CardInfoFile
-                    {
-                        title = card.title,
-                        category = CardCategoryInfo.DisplayName(card.category),
-                        description = card.description,
-                    };
+                    var info = new CardInfoFile { title = card.title };
                     File.WriteAllText(infoPath, JsonUtility.ToJson(info, true), new System.Text.UTF8Encoding(false));
                     AssetDatabase.ImportAsset(infoPath);
                     count++;
@@ -117,12 +112,12 @@ public static class EMWorldSpriteExporter
                 for (int i = 0; i < BandInfo.Count; i++)
                 {
                     var band = (BandType)i;
-                    if (!EMWorldStaticLayouts.HasTempImage(card.category, band)) continue;
+                    if (!EMWorldStaticLayouts.HasTempImage(card.allBands, band)) continue;
 
                     string path = CardImagePath(card.id, band);
                     if (!overwrite && File.Exists(path)) continue;
                     WritePng(path, Render(CardSpriteSize, CardSpriteSize, false,
-                        root => EMWorldStaticLayouts.TempCard(root, card.id, card.title, card.category, band)), 0);
+                        root => EMWorldStaticLayouts.TempCard(root, card.id, card.title, band)), 0);
                     count++;
                 }
             }
